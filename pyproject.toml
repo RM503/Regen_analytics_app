@@ -1,0 +1,17 @@
+[project]
+name = "regen-analytics-app"
+author = "Rafid Mahbub"
+version = "0.1.0"
+description = "App designed for Regen Organics to generate analytics on farmlands"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.14",
+    "geopandas>=1.1.1",
+    "ipython>=9.4.0",
+    "pandas>=2.3.0",
+    "pandera>=0.24.0",
+    "pydantic>=2.11.7",
+    "sqlmodel>=0.0.24",
+    "uvicorn>=0.35.0",
+]
