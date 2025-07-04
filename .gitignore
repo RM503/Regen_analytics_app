@@ -8,4 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# System files
+.env
 .DS_Store
+
+src/backend/test_data
