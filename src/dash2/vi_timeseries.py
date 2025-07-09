@@ -1,8 +1,10 @@
 import os 
 import dotenv
-import ee
+from uuid import uuid4
 from typing import Dict, Any
+import ee
 import pandas as pd
+from shapely.geometry import shape
 
 import logging 
 
@@ -77,6 +79,9 @@ def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
     return img.updateMask(mask)
 
 def get_vi_timeseries(RoI: ee.Geometry | Dict[str, Any], vi: str="ndvi") -> pd.DataFrame:
+    if not isinstance(RoI, ee.Geometry) or not isinstance(RoI, Dict[str, Any]):
+        raise ValueError(f"{RoI} is not a valid ee.Geometry GeoJSON object.")
+
     if not isinstance(RoI, ee.Geometry):
         # Check for polygon geometry type
         RoI = ee.Geometry(RoI)
@@ -106,7 +111,7 @@ def get_vi_timeseries(RoI: ee.Geometry | Dict[str, Any], vi: str="ndvi") -> pd.D
             crs="EPSG:4326"
         )
         
-        vi_data = ee.List([stats.get(vi), -9999]).reduce(ee.Reducer.firstNonNull())
+        vi_data = stats.get(vi)
         date = ee.Date(img.get("system:time_start")).format("YYYY-MM-dd")
 
         return ee.Feature(None, {"date": date, vi: vi_data})
@@ -122,6 +127,11 @@ def get_vi_timeseries(RoI: ee.Geometry | Dict[str, Any], vi: str="ndvi") -> pd.D
     # Unpack the properties column
     df[["date", vi]] = df["properties"].apply(pd.Series)
     df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
-    df = df.drop(columns=["properties"])
+    df = df[["date", vi]]
+
+    # Remove duplicate dates (this can arise due to data acquisition), add uuid and geometry
+    df = df.drop_duplicates(subset="date", keep="first")
+    df.insert(0, "uuid", str(uuid4()))
+    df.insert(0, "geometry", shape(RoI.getInfo()).wkt) # store geometry in WKt format
 
     return df
