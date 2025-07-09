@@ -52,7 +52,7 @@ layout = dbc.Container([
                 ],
                 center=location_w_coords["Default"],
                 zoom=7,
-                style={"height": "90vh"}
+                style={"height": "85vh"}
             ),
         ], xs=6),
         dbc.Col([
@@ -65,9 +65,14 @@ layout = dbc.Container([
             ]),
             html.Pre(id="geojson-output", style={
                 "whiteSpace": "pre-wrap", "wordBreak": "break-word",
-                "height": "85vh", "overflow": "auto",
+                "height": "75vh", "overflow": "auto",
                 "border": "1px solid #ccc", "padding": "10px"
             }),
+            html.Div([
+                html.Button("Download polygons", id="download_button", n_clicks=0),
+                dcc.Download(id="download_polygons"), 
+                dcc.Store(id="polygons_store")
+            ]),
             dbc.Alert(id="polygon_count_alert", is_open=False, color="warning")
         ], xs=6)
     ])
