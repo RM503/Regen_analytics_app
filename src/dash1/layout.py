@@ -1,7 +1,9 @@
+# Dashboard 1 layout
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
+# Tile map layers (not Sentinel-2 rasters)
 esri_hybrid = dl.TileLayer(
     url="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     attribution="ESRI",
@@ -19,12 +21,14 @@ edit_control = dl.EditControl(
     draw={"rectangle": True, "polygon": True, "marker": True, "circle": False, "polyline": False, "circlemarker": False}
 )
 
+# Distributor locations with coordinates go here
 location_w_coords = {
         "Default": [1.00, 38.00],
         "Laikipia_1": [0.2580, 36.5353],
         "Trans_Nzoia_1": [1.0199, 35.0211]
     }
 
+# Layout - map, data panel and alerts
 layout = dbc.Container([
     dbc.Row([
         html.H1("Polygon generator", style={"fontSize": "30px", "textAlign": "center"})

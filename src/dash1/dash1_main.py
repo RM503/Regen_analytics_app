@@ -1,3 +1,4 @@
+# Dashboard 1 main file (callbacks and etc.)
 from uuid import uuid4
 from typing import Any
 import json
@@ -21,6 +22,8 @@ app = Dash(__name__, requests_pathname_prefix="/dash1/", external_stylesheets=[d
 #app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "Polygon generator"
 app.layout = layout 
+
+# Callbacks
 
 @app.callback(
     Output("map", "center"),

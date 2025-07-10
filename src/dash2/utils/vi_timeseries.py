@@ -1,7 +1,8 @@
+# Obtains NDVI and NDMI time-series from queried polygons
 import os 
 import dotenv
 from uuid import uuid4
-from typing import Dict, Any
+from typing import Dict, Any, NewType
 import ee
 import pandas as pd
 from shapely.geometry import shape
@@ -15,6 +16,10 @@ GEE_PROJECT = os.getenv("GEE_PROJECT")
 
 ee.Authenticate()
 ee.Initialize(project=GEE_PROJECT)
+
+# Type hints for WKT polygon data
+WKTPolygon = NewType("WKTPolygon", str)
+CSVText = NewType("CSVText", str)
 
 class VIIndex:
     """
@@ -78,7 +83,17 @@ def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
 
     return img.updateMask(mask)
 
-def get_vi_timeseries(RoI: ee.Geometry | Dict[str, Any], vi: str="ndvi") -> pd.DataFrame:
+def get_vi_timeseries(RoI: WKTPolygon | CSVText, vi: str="ndvi") -> pd.DataFrame:
+    """
+    This function generates NDVI and NDMI time-series data from polygon geometry(ies)
+    provided by the user. The geometry data is provided in the WKT format.
+
+    Args: (i) RoI - the region(s)-of-interest; polygon data can be passed either standalone or 
+                    in a csv file with a geometry column
+          (ii) vi - the vegetation index to generate; defaults to `ndvi` 
+
+    Returns: pandas dataframe containing vi time-series for queried polygons
+    """
     if not isinstance(RoI, ee.Geometry) or not isinstance(RoI, Dict[str, Any]):
         raise ValueError(f"{RoI} is not a valid ee.Geometry GeoJSON object.")
 
