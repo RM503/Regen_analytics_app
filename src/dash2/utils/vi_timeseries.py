@@ -2,10 +2,12 @@
 import os 
 import dotenv
 from uuid import uuid4
-from typing import Dict, Any, NewType
+from typing import Dict, Any
 import ee
 import pandas as pd
+from shapely import wkt
 from shapely.geometry import shape
+from .preprocessing import clean_vi_series
 
 import logging 
 
@@ -17,9 +19,6 @@ GEE_PROJECT = os.getenv("GEE_PROJECT")
 ee.Authenticate()
 ee.Initialize(project=GEE_PROJECT)
 
-# Type hints for WKT polygon data
-WKTPolygon = NewType("WKTPolygon", str)
-CSVText = NewType("CSVText", str)
 
 class VIIndex:
     """
@@ -83,23 +82,23 @@ def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
 
     return img.updateMask(mask)
 
-def get_vi_timeseries(RoI: WKTPolygon | CSVText, vi: str="ndvi") -> pd.DataFrame:
+def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
     """
-    This function generates NDVI and NDMI time-series data from polygon geometry(ies)
+    This function generates NDVI and NDMI time-series data from a polygon geometry
     provided by the user. The geometry data is provided in the WKT format.
 
-    Args: (i) RoI - the region(s)-of-interest; polygon data can be passed either standalone or 
-                    in a csv file with a geometry column
+    Args: (i) RoI - the region(-of-interest; polygon data must be passed either standalone
           (ii) vi - the vegetation index to generate; defaults to `ndvi` 
 
     Returns: pandas dataframe containing vi time-series for queried polygons
     """
-    if not isinstance(RoI, ee.Geometry) or not isinstance(RoI, Dict[str, Any]):
-        raise ValueError(f"{RoI} is not a valid ee.Geometry GeoJSON object.")
+    
+    # Polygons are passed as wkt strings; need to be converted to ee.Geometry objects
+    if not isinstance(RoI, str):
+        RoI = str(RoI)
 
-    if not isinstance(RoI, ee.Geometry):
-        # Check for polygon geometry type
-        RoI = ee.Geometry(RoI)
+    shapely_polygon = wkt.loads(RoI)
+    RoI = ee.Geometry.Polygon(shapely_polygon.__geo_interface__["coordinates"])
 
     START_DATE = "2020-01-01"
     END_DATE = "2024-12-31"
@@ -108,7 +107,7 @@ def get_vi_timeseries(RoI: WKTPolygon | CSVText, vi: str="ndvi") -> pd.DataFrame
         "ndvi": VIIndex.add_NDVI,
         "ndmi": VIIndex.add_NDMI
     }
-
+    
     img_collection = (
         ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
         .filterDate(START_DATE, END_DATE)
@@ -144,9 +143,39 @@ def get_vi_timeseries(RoI: WKTPolygon | CSVText, vi: str="ndvi") -> pd.DataFrame
     df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
     df = df[["date", vi]]
 
-    # Remove duplicate dates (this can arise due to data acquisition), add uuid and geometry
+    # Remove duplicate dates (this can arise due to data acquisition), add geometry
     df = df.drop_duplicates(subset="date", keep="first")
-    df.insert(0, "uuid", str(uuid4()))
-    df.insert(0, "geometry", shape(RoI.getInfo()).wkt) # store geometry in WKt format
 
-    return df
+    # Apply preprocessing steps
+    df_cleaned = clean_vi_series(df, vi, resample_date=False)
+ 
+    df_cleaned.insert(2, "geometry", shape(RoI.getInfo()).wkt) # store geometry in WKt format
+
+    return df_cleaned
+
+def combined_timeseries(RoI: str) -> pd.DataFrame:
+    """
+    This function ...
+    """
+    max_polygons = 5
+    def process_single_geometry(geometry: str) -> pd.DataFrame:
+        uid = str(uuid4())
+        df_ndvi = get_vi_timeseries(geometry, "ndvi")
+        df_ndmi = get_vi_timeseries(geometry, "ndmi")
+        df_merged = df_ndvi.merge(df_ndmi, on=["date", "geometry"], how="inner")
+        df_merged.insert(0, "uuid", uid)
+        return df_merged[["uuid", "date", "geometry", "ndvi", "ndmi"]]
+
+    if isinstance(RoI, str):
+        return process_single_geometry(RoI)
+
+    elif isinstance(RoI, pd.DataFrame):
+        if len(RoI) > max_polygons:
+            logging.error(f"Data contains more than {max_polygons} polygons.")
+            raise ValueError(f"Too many polygons provided (limit: {max_polygons}).")
+
+        df_list = [process_single_geometry(row["geometry"]) for _, row in RoI.iterrows()]
+        return pd.concat(df_list, ignore_index=True)
+
+    else:
+        raise TypeError("Input RoI must be a string (WKT) or a pandas DataFrame with 'geometry' column.")

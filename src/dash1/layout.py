@@ -64,7 +64,13 @@ layout = dbc.Container([
                 dcc.Dropdown(
                     options=list(location_w_coords.keys()),
                     value="Default",
-                    id="location_dropdown"
+                    id="location_dropdown",
+                    style={
+                        "backgroundColor": "#222",   # background of the dropdown
+                        "color": "black",            # selected text color
+                        "border": "1px solid #444",
+                    },
+                    clearable=True
                 )
             ]),
             html.Pre(id="geojson-output", style={
@@ -73,11 +79,12 @@ layout = dbc.Container([
                 "border": "1px solid #ccc", "padding": "10px"
             }),
             html.Div([
-                html.Button("Download polygons", id="download_button", n_clicks=0),
+                dbc.Button("Download polygons", id="download_button", n_clicks=0),
                 dcc.Download(id="download_polygons"), 
                 dcc.Store(id="polygons_store")
             ]),
-            dbc.Alert(id="polygon_count_alert", is_open=False, color="warning")
+            dbc.Alert(id="polygon_count_alert", is_open=False, color="warning"),
+            dbc.Alert(id="area_limit_alert", is_open=False, color="danger")
         ], xs=6)
     ])
 ], fluid=True)

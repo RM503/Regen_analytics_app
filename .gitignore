@@ -14,3 +14,7 @@ wheels/
 .DS_Store
 
 Dockerfile
+
+logs/
+
+db/

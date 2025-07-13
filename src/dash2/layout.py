@@ -2,23 +2,42 @@ from datetime import datetime
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
+import logging 
+
+logger = logging.getLogger(__name__)
 
 # Define blank canvas on which NDVI/NDMI time-seres are generated
-fig = go.Figure()
-fig.update_layout(
-    width=600,
+
+fig_ndvi = go.Figure()
+fig_ndvi.update_layout(
+    width=650,
     height=300,
-    plot_bgcolor="#222",      # dark plot area
-    paper_bgcolor="#222",     # dark area outside plot
-    font=dict(color="white"), # white text
+    plot_bgcolor="#222",      
+    paper_bgcolor="#222",     
+    font=dict(color="white"), 
     xaxis_title="Date",
     xaxis=dict(range=[datetime(2020, 1, 1), datetime(2024, 12, 31)], type="date"),
-    yaxis_title="NDVI/NDMI",
+    yaxis_title="NDVI",
     yaxis=dict(range=[-0.5, 1]),
-    margin=dict(l=20, r=20, t=30, b=20),  # optional: reduce padding
+    margin=dict(l=20, r=20, t=30, b=20)
+)
+
+fig_ndmi = go.Figure()
+fig_ndmi.update_layout(
+    width=650,
+    height=300,
+    plot_bgcolor="#222",      
+    paper_bgcolor="#222",     
+    font=dict(color="white"), 
+    xaxis_title="Date",
+    xaxis=dict(range=[datetime(2020, 1, 1), datetime(2024, 12, 31)], type="date"),
+    yaxis_title="NDMI",
+    yaxis=dict(range=[-0.5, 1]),
+    margin=dict(l=20, r=20, t=30, b=20)
 )
 
 layout = dbc.Container([
+    dcc.Store(id="geometry_validation_check"),
     dbc.Row([
         html.H1("Farmland vegetation and moisture", style={"fontSize": "30px", "textAlign": "center"})
     ]),
@@ -37,13 +56,15 @@ layout = dbc.Container([
                    available in the plants and surrounding soil and can be an indicator of whether or not a farm is being irrigated."),
             html.Br(),
             html.H4("Add polygon data"),
-            html.P("Type polygon data in the box"),
+            html.P("Type polygon data in the box (one per submission)"),
             dcc.Textarea(
                 id="polygon_input",
                 value="Add polygon geometry here",
                 style={"width": "100%", "height": "100px"}
             ),
-            html.Button("Submit", id="upload_button", n_clicks=0),
+            dbc.Button("Submit", id="upload_button", n_clicks=0),
+            html.Br(),
+            dbc.Alert(color="danger", is_open=False, id="invalid_geometry_alert"),
             html.Br(),
             html.P("or upload csv file"),
             dcc.Upload(
@@ -69,11 +90,33 @@ layout = dbc.Container([
         dbc.Col([
             html.H4("Generated data"),
             html.Br(),
-            dcc.Graph(
-                id="ndvi_plot",
-                figure=fig,
-                style={"backgroundColor": "transparent"} 
-            )
+            html.Div([
+                dcc.Loading(
+                    id="loading_plot",
+                    type="default",
+                    children=[
+                        dcc.Graph(
+                            id="ndvi_plot",
+                            figure=fig_ndvi,
+                            style={"backgroundColor": "transparent"} 
+                        ),
+                        dcc.Graph(
+                            id="ndmi_plot",
+                            figure=fig_ndmi,
+                            style={"backgroundColor": "transparent"} 
+                        )
+                    ]
+                )
+            ])
         ])
+    ]),
+    html.Br(),
+    dbc.Row(html.H4("Planting cycles and moisture levels")),
+    dbc.Row([
+        dbc.Col([
+            html.P("From the NDVI and NDMI time-series curves generated for the submitted polygon(s), we are \
+                   able to say the following regarding annual planting cycles and farm moisture levels:")
+        ]),
+        dbc.Col([])
     ])
 ])

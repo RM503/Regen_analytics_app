@@ -3,13 +3,37 @@
     <head>
         <title> Regen Organics: Analytics App </title>
         <link rel="stylesheet" href="/static/style.css">
+        <style>
+            .row {
+                display: flex;
+                align-items: left;
+                justify-content: left;
+                gap: 20px;
+                margin-top: 50px;
+            }
+    
+            .column img {
+                width: 100px; /* Adjust size as needed */
+                height: auto;
+                border: 1px solid #ccc; /* Optional: visual aid */
+            }
+        </style>
     </head>
     <body>
-        <img src="/logos/regen_logo.png" alt="Regen Logo" >
+        <div class="row">
+            <div class="column">
+                <img src="/logos/datakind_logo.png" alt="DK Logo" >
+            </div>
+            <div class="column">
+                <img src="/logos/regen_logo.png" alt="Regen Logo" style="width: 400px; height: auto;" >
+            </div>
+        </div>
         <h1> Welcome user! </h1>
         <p> Please click on the links below to navigate to specific pages. </p>
         <ul>
             <li> <a href="/dash1/">Polygon generator</a> </li>
+            <li> <a href="/dash2/">Farmland characteristics</a> </li>
         </ul>
+        <p> For ancillary information, refer to the links below </p>
     </body>
 </html>
