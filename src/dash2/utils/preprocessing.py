@@ -11,6 +11,8 @@ from pandera import DataFrameSchema, Column
 from sklearn.ensemble import IsolationForest
 import logging
 
+logger = logging.getLogger(__name__)
+
 class VIDataValidation:
     """ 
     This class validates the preprocessed time-series data containing any

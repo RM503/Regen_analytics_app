@@ -66,7 +66,7 @@ layout = dbc.Container([
             html.Br(),
             dbc.Alert(color="danger", is_open=False, id="invalid_geometry_alert"),
             html.Br(),
-            html.P("or upload csv file"),
+            html.P("or upload csv file (beware of cluttering)"),
             dcc.Upload(
                 id='upload-data',
                 children=html.Div([

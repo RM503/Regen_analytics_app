@@ -11,7 +11,7 @@ from .preprocessing import clean_vi_series
 
 import logging 
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 dotenv.load_dotenv()
 GEE_PROJECT = os.getenv("GEE_PROJECT")
@@ -155,26 +155,35 @@ def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
 
 def combined_timeseries(RoI: str) -> pd.DataFrame:
     """
-    This function ...
+    This function combines the NDVI and NDVI data ...
     """
     max_polygons = 5
     def process_single_geometry(geometry: str) -> pd.DataFrame:
-        uid = str(uuid4())
+
         df_ndvi = get_vi_timeseries(geometry, "ndvi")
         df_ndmi = get_vi_timeseries(geometry, "ndmi")
         df_merged = df_ndvi.merge(df_ndmi, on=["date", "geometry"], how="inner")
-        df_merged.insert(0, "uuid", uid)
-        return df_merged[["uuid", "date", "geometry", "ndvi", "ndmi"]]
+ 
+        return df_merged[["date", "geometry", "ndvi", "ndmi"]]
 
     if isinstance(RoI, str):
-        return process_single_geometry(RoI)
+        uuid = str(uuid4())
+        df = process_single_geometry(RoI)
+        df.insert(0, "uuid", uuid)
 
     elif isinstance(RoI, pd.DataFrame):
         if len(RoI) > max_polygons:
             logging.error(f"Data contains more than {max_polygons} polygons.")
             raise ValueError(f"Too many polygons provided (limit: {max_polygons}).")
 
-        df_list = [process_single_geometry(row["geometry"]) for _, row in RoI.iterrows()]
+        df_list = []
+        for idx, row in RoI.iterrows():
+            df = process_single_geometry(row["geometry"])
+
+            # If `uuid` exists in the uploaded file, no need to assign new ones
+            uuid = row["uuid"] if "uuid" in RoI.columns else str(uuid4())
+            df.insert(0, "uuid", uuid)
+            df_list.append(df)
         return pd.concat(df_list, ignore_index=True)
 
     else:
