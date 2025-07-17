@@ -2,8 +2,8 @@
 import os 
 import dotenv
 from uuid import uuid4
-from typing import Dict, Any
 import ee
+import numpy as np
 import pandas as pd
 from shapely import wkt
 from shapely.geometry import shape
@@ -153,7 +153,7 @@ def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
 
     return df_cleaned
 
-def combined_timeseries(RoI: str) -> pd.DataFrame:
+def combined_timeseries(RoI: pd.DataFrame) -> pd.DataFrame:
     """
     This function combines the NDVI and NDVI data ...
     """
@@ -166,25 +166,46 @@ def combined_timeseries(RoI: str) -> pd.DataFrame:
  
         return df_merged[["date", "geometry", "ndvi", "ndmi"]]
 
-    if isinstance(RoI, str):
-        uuid = str(uuid4())
-        df = process_single_geometry(RoI)
+    if len(RoI) > max_polygons:
+        logging.error(f"Data contains more than {max_polygons} polygons.")
+        raise ValueError(f"Too many polygons provided (limit: {max_polygons}).")
+
+    df_list = []
+    for idx, row in RoI.iterrows():
+        df = process_single_geometry(row["geometry"])
+
+        # If `uuid` exists in the uploaded file, no need to assign new ones
+        uuid = row["uuid"] if "uuid" in RoI.columns else str(uuid4())
         df.insert(0, "uuid", uuid)
+        df.insert(1, "region", row["region"])
+        df.insert(2, "area (acres)", row["area (acres)"])
+        df_list.append(df)
+    return pd.concat(df_list, ignore_index=True)
+    # if isinstance(RoI, str):
+    #     uuid = str(uuid4())
+    #     df = process_single_geometry(RoI)
+    #     df.insert(0, "uuid", uuid)
+    #     df.insert(1, "region", None)
+    #     df.insert(2, "area (acres)", np.nan)
 
-    elif isinstance(RoI, pd.DataFrame):
-        if len(RoI) > max_polygons:
-            logging.error(f"Data contains more than {max_polygons} polygons.")
-            raise ValueError(f"Too many polygons provided (limit: {max_polygons}).")
+    #     return df
 
-        df_list = []
-        for idx, row in RoI.iterrows():
-            df = process_single_geometry(row["geometry"])
+    # elif isinstance(RoI, pd.DataFrame):
+    #     if len(RoI) > max_polygons:
+    #         logging.error(f"Data contains more than {max_polygons} polygons.")
+    #         raise ValueError(f"Too many polygons provided (limit: {max_polygons}).")
 
-            # If `uuid` exists in the uploaded file, no need to assign new ones
-            uuid = row["uuid"] if "uuid" in RoI.columns else str(uuid4())
-            df.insert(0, "uuid", uuid)
-            df_list.append(df)
-        return pd.concat(df_list, ignore_index=True)
+    #     df_list = []
+    #     for idx, row in RoI.iterrows():
+    #         df = process_single_geometry(row["geometry"])
 
-    else:
-        raise TypeError("Input RoI must be a string (WKT) or a pandas DataFrame with 'geometry' column.")
+    #         # If `uuid` exists in the uploaded file, no need to assign new ones
+    #         uuid = row["uuid"] if "uuid" in RoI.columns else str(uuid4())
+    #         df.insert(0, "uuid", uuid)
+    #         df.insert(1, "region", row["region"])
+    #         df.insert(2, "area (acres)", row["area (acres)"])
+    #         df_list.append(df)
+    #     return pd.concat(df_list, ignore_index=True)
+
+    # else:
+    #     raise TypeError("Input RoI must be a string (WKT) or a pandas DataFrame with 'geometry' column.")

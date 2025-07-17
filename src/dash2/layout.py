@@ -37,7 +37,11 @@ fig_ndmi.update_layout(
 )
 
 layout = dbc.Container([
+    # Data stores
     dcc.Store(id="geometry_validation_check"),
+    dcc.Store(id="farm_stats"),
+    dcc.Store(id="isda_soil_data"),
+    # Layout proper
     dbc.Row([
         html.H1("Farmland vegetation and moisture", style={"fontSize": "30px", "textAlign": "center"})
     ]),
@@ -111,12 +115,14 @@ layout = dbc.Container([
         ])
     ]),
     html.Br(),
-    dbc.Row(html.H4("Planting cycles and moisture levels")),
+    dbc.Row(html.H4("Planting cycles, moisture levels and soil quantities")),
     dbc.Row([
-        dbc.Col([
-            html.P("From the NDVI and NDMI time-series curves generated for the submitted polygon(s), we are \
-                   able to say the following regarding annual planting cycles and farm moisture levels:")
-        ]),
-        dbc.Col([])
-    ])
+        html.P("From the NDVI and NDMI time-series curves generated for the submitted polygon(s), we are \
+                can estimate certain metrics important to farmlands. The following tables include information \
+               on peak growin seasons, planting cycles and moisture levels along with a list of important \
+               soil health indicators -")
+    ]),
+    html.Div(id="farm_stats_container"),
+    html.Br(),
+    html.Div(id="isda_soil_data_container")
 ])

@@ -5,6 +5,7 @@ description = "App designed for Regen Organics to generate analytics on farmland
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "aiohttp>=3.12.14",
     "dash>=3.1.1",
     "dash-bootstrap-components>=2.0.3",
     "dash-leaflet>=1.1.3",
