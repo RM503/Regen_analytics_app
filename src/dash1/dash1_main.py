@@ -1,4 +1,5 @@
 # Dashboard 1 main file (callbacks and etc.)
+import os
 from uuid import uuid4
 from typing import Any
 import json
@@ -13,17 +14,33 @@ from dash import (
 )
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
+import dotenv
+from sqlmodel import create_engine
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 import pandas as pd
 import geopandas as gpd
 from shapely.geometry import shape
 from shapely.ops import transform
 from pyproj import Transformer
 from .layout import layout
+import logging 
+
+logger = logging.getLogger(__name__)
 
 app = Dash(__name__, requests_pathname_prefix="/dash1/", external_stylesheets=[dbc.themes.DARKLY])
-#app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
 app.title = "Polygon generator"
-app.layout = layout 
+app.layout = layout
+
+dotenv.load_dotenv()
+
+# Create SQLAlchemy engine
+try:
+    DB_URL = os.getenv("DB_URL")
+    engine = create_engine(DB_URL, echo=True)
+except OperationalError as e:
+    logging.error(f"Connection failed: {e}")
 
 # Callbacks
 
@@ -59,14 +76,9 @@ def update_vector_layer(location: str) -> dict[str, Any]:
     if location == "Default":
         return {"type": "FeatureCollection", "features": []}
     
-    # Upload geometry file and check for correct CRS
-    file_path = f"src/dash1/assets/{location}_results_aggregated.feather"
-    gdf = gpd.read_feather(file_path, columns=["uuid", "area (acres)", "prediction_decoded", "geometry"])
-
-    # Keep only those polygons labeled as farms
-    gdf = gdf[gdf["prediction_decoded"]=="Farm"]
-    if gdf.crs and gdf.crs != "EPSG:4326":
-        gdf = gdf.to_crs("EPSG:4326")
+    # Filter polygons by region from PostGIS db
+    query = text("SELECT * FROM farmpolygons WHERE region = :region")
+    gdf = gpd.read_postgis(query, engine, geom_col="geometry", params={"region": location})
 
     geojson_data = json.loads(gdf.to_json()) # Convert gdf to geojson
 
@@ -74,7 +86,7 @@ def update_vector_layer(location: str) -> dict[str, Any]:
     for feature in geojson_data["features"]:
         props = feature["properties"]
         uuid = props.get("uuid", "N/A")
-        area = props.get("area (acres)", "N/A")
+        area = props.get("area", "N/A")
 
         try:
             area_float = float(area)
@@ -107,7 +119,7 @@ def update_output(geojson: dict, location: str) -> tuple[str | dict[str, Any], b
         polygon_dict = {
             "uuid": [],
             "region": [],
-            "area (acres)": [],
+            "area": [],
             "geometry": []
         }
 
@@ -142,7 +154,7 @@ def update_output(geojson: dict, location: str) -> tuple[str | dict[str, Any], b
                         # Append to polygon_dict
                         polygon_dict["uuid"].append(str(uuid4()))
                         polygon_dict["region"].append(location)
-                        polygon_dict["area (acres)"].append(area)
+                        polygon_dict["area"].append(area)
                         polygon_dict["geometry"].append(wkt)
 
                     except Exception as e:
