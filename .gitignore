@@ -18,4 +18,5 @@ Dockerfile
 logs/
 
 src/dash2/test_data
-db/
+
+db/data

@@ -3,7 +3,6 @@ import os
 import dotenv
 from uuid import uuid4
 import ee
-import numpy as np
 import pandas as pd
 from shapely import wkt
 from shapely.geometry import shape

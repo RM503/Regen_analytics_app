@@ -9,26 +9,71 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-def concat_gdf_regions(data_dir: str) -> gpd.GeoDataFrame:
-    """
-    This function takes a directory containing multiple gdf files of a similar
-    type but of different regions and concatenates them into one.
-    """
-    file_paths = glob.glob(f"{data_dir}/*.feather")
+# def concat_data_by_region(data_dir: str) -> tuple[pd.DataFrame, gpd.GeoDataFrame]:
+#     """
+#     This function takes a directory containing multiple gdf files of a similar
+#     type but of different regions and concatenates them into one.
+#     """
+#     file_paths = glob.glob(f"{data_dir}/*.feather")
 
-    gdf_list = []
-    for path in file_paths:
-        REGION = path.split("/")[-1].split("_results")[0]
+#     gdf_list = []
+#     for path in file_paths:
+#         REGION = path.split("/")[-1].split("_results")[0]
 
-        gdf = gpd.read_feather(path, columns=["uuid", "area (acres)", "geometry"])
-        gdf.insert(1, "region", REGION)
-        gdf.rename(columns={"area (acres)" : "area"}, inplace=True)
+#         gdf = gpd.read_feather(path, columns=["uuid", "area (acres)", "geometry"])
+#         gdf.insert(1, "region", REGION)
+#         gdf.rename(columns={"area (acres)" : "area"}, inplace=True)
 
-        # Append to list 
-        gdf_list.append(gdf)
+#         # Append to list 
+#         gdf_list.append(gdf)
 
-    gdf_concat = pd.concat(gdf_list, ignore_index=True)
-    return gdf_concat
+#     gdf_concat = pd.concat(gdf_list, ignore_index=True)
+#     return gdf_concat
+
+def concat_data_by_region(file_name: str) -> pd.DataFrame | gpd.GeoDataFrame:
+    dir_list = glob.glob("data/*")
+    data_list = []
+
+    for dir in dir_list:
+        REGION = dir.split("/")[-1] # get region name
+        file_paths = glob.glob(f"{dir}/{file_name}*")
+
+        is_geo = file_name.endswith(".feather")
+
+        for path in file_paths:
+            try:
+                if is_geo:
+                    gdf = gpd.read_feather(path)
+
+                    # geodataframes will usually have polygon `uuid` information
+                    gdf.insert(1, "region", REGION)
+                    gdf.rename(columns={"area (acres)" : "area"}, inplace=True)
+                    data_list.append(gdf)
+                else:
+                    df = pd.read_csv(path)
+
+                    df.insert(1, "region", REGION)
+                    data_list.append(df)
+            except Exception as e:
+                logging.error(f"Failed to process file: {e}")
+
+        if not data_list:
+            raise FileNotFoundError(f"No matching '{file_name}' files found under any region.")
+
+    if is_geo:
+        return gpd.GeoDataFrame(pd.concat(data_list, ignore_index=True))
+    else:
+        df_concat = pd.concat(data_list, ignore_index=True)
+
+        """
+        Some of the dataframes are aggregate data without any `uuid` column.
+        These need to be given an `id` column to be used as a primary key in
+        the database.
+        """
+        if "uuid" not in df_concat.columns:
+            df_concat.insert(0, "id", range(1, len(df_concat) + 1)) # insert an `id` column
+        
+        return df_concat
 
 def populate_table_rows(
         data: pd.DataFrame | gpd.GeoDataFrame,

@@ -6,6 +6,7 @@ from fastapi.middleware.wsgi import WSGIMiddleware
 from fastapi.templating import Jinja2Templates
 from src.dash1.dash1_main import app as dash1
 from src.dash2.dash2_main import app as dash2
+from src.dash3.dash3_main import app as dash3
 import logging
 from logging_config import setup_logging
 
@@ -18,6 +19,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/logos", StaticFiles(directory="logos"), name="logos")
 app.mount("/dash1", WSGIMiddleware(dash1.server))
 app.mount("/dash2", WSGIMiddleware(dash2.server))
+app.mount("/dash3", WSGIMiddleware(dash3.server))
 
 @app.get("/")
 def root(request: Request):
