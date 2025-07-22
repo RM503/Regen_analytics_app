@@ -56,6 +56,8 @@ def toggle_map(location: str) -> tuple[list[float], list]:
     """
     location_w_coords = {
         "Default": [1.00, 38.00],
+        "Kajiado_1": [-2.8072, 37.5271],
+        "Kajiado_2": [-3.0318, 37.7068],
         "Laikipia_1": [0.2580, 36.5353],
         "Trans_Nzoia_1": [1.0199, 35.0211]
     }
