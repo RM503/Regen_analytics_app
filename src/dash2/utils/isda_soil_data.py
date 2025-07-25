@@ -14,7 +14,7 @@ import logging
 
 logging.getLogger(__name__)
 
-dotenv.load_dotenv()
+dotenv.load_dotenv(override=True)
 USERNAME = os.getenv("isda_username")
 PASSWORD = os.getenv("isda_password")
 

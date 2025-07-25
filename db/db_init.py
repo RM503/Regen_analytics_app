@@ -21,18 +21,18 @@ def create_table(engine: Engine) -> None:
     # Create table
     SQLModel.metadata.create_all(engine)
 
-def main(data: pd.DataFrame | gpd.GeoDataFrame, table_class: Type[SQLModel]) -> None:
+def main(data: pd.DataFrame | gpd.GeoDataFrame, table_class: Type[SQLModel], engine: Engine) -> None:
     # Perform database populating tasks here
     utils.populate_table_rows(data, table_class, engine)
 
 if __name__ == "__main__":
-
     DB_URL = os.getenv("DB_URL")
     try:
         engine = create_engine(DB_URL, echo=True)
         logging.info("Connected successfully.")
     except OperationalError as e:
-        logging.info(f"Connection failed: {e}")
+        logging.error(f"Connection failed: {e}")
+        exit(1)
 
     data_to_model_map = {
         "high_ndmi_days": models.HighNDMIDays,  
@@ -42,13 +42,17 @@ if __name__ == "__main__":
         "ndvi_peaks": models.NDVIPeaksPerFarm
     }
 
-    file_types = list(data_to_model_map.keys())
+    create_table(engine)  
 
-    for file_type in file_types:
+    for file_type, model in data_to_model_map.items():
         FILE = f"{file_type}.csv"
-        data = utils.concat_data_by_region(FILE)
-
-        model = data_to_model_map[file_type]
+        file_path = f"data/{FILE}"
         
-        create_table(engine)
-        main(data, model)
+        if not os.path.exists(file_path):
+            logging.warning(f"{file_path} not found, skipping...")
+            continue
+
+        logging.info(f"Processing {file_type}")
+        data = utils.concat_data_by_region(FILE)
+        main(data, model, engine)
+        logging.info(f"Finished populating: {file_type}")

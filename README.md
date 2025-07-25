@@ -9,6 +9,43 @@ The design and functionality of this app relies heavily on the workflow carried 
 
 https://github.com/RM503/DataKind_Geospatial/
 
+Even though the app was designed for a particular organization, it can be adapted to needs of other users.
+
+## Running the app
+
+The complete list of libraries required for running the app can be found in the `requirements.txt` or `pyproject.toml` files. To build the app using Docker, first clone the repository to your local device using
+
+```
+git clone https://github.com/RM503/Regen_analytics_app.git
+```
+
+Use the Docker file to first build the app
+
+```
+docker build -t <whatever_name_you_want:version> .
+```
+and run
+
+```
+docker run --env-file .env -p 8000:8000 <whatever_name_you_want:version>>
+```
+In the run command, we explicitly inject the environment variables through a `.env` file. The app, at the moment, uses the following APIs and services
+
+* Google Earth Engine (GEE) Python API for calculating NDVI-NDMI curves from queried polygons
+* iSDA API for extracting soil quantities for queried polygons
+* Supabase for retrieving pre-existing data (write functionality has not been incorporated yet)
+
+These services have their own API keys and URLs, which need to be provided for the app to work. The following is a skeleton for what the `.env` file should look like
+
+```
+GEE_PROJECT=... 
+GOOGLE_APPLICATION_CREDENTIALS=...
+EE_SERVICE_ACC_EMAIL=...
+ISDA_USERNAME=...
+ISDA_PASSWORD=...
+SUPABASE_URL=...
+```
+
 ## How to use this app?
 
 At the moment, the app is mostly meant for querying farm polygons, extracting information about and them and (possibly) updating the existing database with the new information. The app is divided into multiple dashboards, each serving different purposes. This can be seen upon launching the app, taking the user to the landing page. The following contains detailed information regarding each dashboar:

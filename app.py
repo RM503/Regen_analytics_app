@@ -14,7 +14,10 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+
+templates = Jinja2Templates(directory="templates") # Landing page template
+
+# Mounts
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/logos", StaticFiles(directory="logos"), name="logos")
 app.mount("/dash1", WSGIMiddleware(dash1.server))

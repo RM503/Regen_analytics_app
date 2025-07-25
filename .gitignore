@@ -1,4 +1,3 @@
-# Python-generated files
 __pycache__/
 *.py[oc]
 build/
@@ -6,17 +5,23 @@ dist/
 wheels/
 *.egg-info
 
-# Virtual environments
+
 .venv
 
-# System files
+
 .env
+.env.docker
 .DS_Store
 
-Dockerfile
+.dockerignore
 
 logs/
 
 src/dash2/test_data
 
 db/data
+
+docs/*
+!docs/user_guide.pdf
+
+credentials.json

@@ -12,12 +12,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-dotenv.load_dotenv()
-GEE_PROJECT = os.getenv("GEE_PROJECT")
+dotenv.load_dotenv(override=True)
+# GEE_PROJECT = os.getenv("GEE_PROJECT")
 
-ee.Authenticate()
-ee.Initialize(project=GEE_PROJECT)
-
+# #ee.Authenticate()
+# ee.Initialize(project=GEE_PROJECT)
+credentials = ee.ServiceAccountCredentials(
+    os.environ["EE_SERVICE_ACC_EMAIL"],
+    key_file=os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+)
+ee.Initialize(credentials)
 
 class VIIndex:
     """
@@ -180,31 +184,3 @@ def combined_timeseries(RoI: pd.DataFrame) -> pd.DataFrame:
         df.insert(2, "area (acres)", row["area (acres)"])
         df_list.append(df)
     return pd.concat(df_list, ignore_index=True)
-    # if isinstance(RoI, str):
-    #     uuid = str(uuid4())
-    #     df = process_single_geometry(RoI)
-    #     df.insert(0, "uuid", uuid)
-    #     df.insert(1, "region", None)
-    #     df.insert(2, "area (acres)", np.nan)
-
-    #     return df
-
-    # elif isinstance(RoI, pd.DataFrame):
-    #     if len(RoI) > max_polygons:
-    #         logging.error(f"Data contains more than {max_polygons} polygons.")
-    #         raise ValueError(f"Too many polygons provided (limit: {max_polygons}).")
-
-    #     df_list = []
-    #     for idx, row in RoI.iterrows():
-    #         df = process_single_geometry(row["geometry"])
-
-    #         # If `uuid` exists in the uploaded file, no need to assign new ones
-    #         uuid = row["uuid"] if "uuid" in RoI.columns else str(uuid4())
-    #         df.insert(0, "uuid", uuid)
-    #         df.insert(1, "region", row["region"])
-    #         df.insert(2, "area (acres)", row["area (acres)"])
-    #         df_list.append(df)
-    #     return pd.concat(df_list, ignore_index=True)
-
-    # else:
-    #     raise TypeError("Input RoI must be a string (WKT) or a pandas DataFrame with 'geometry' column.")

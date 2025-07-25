@@ -33,7 +33,7 @@ app = Dash(__name__, requests_pathname_prefix="/dash1/", external_stylesheets=[d
 app.title = "Polygon generator"
 app.layout = layout
 
-dotenv.load_dotenv()
+dotenv.load_dotenv(override=True)
 
 # Create SQLAlchemy engine
 try:

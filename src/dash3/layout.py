@@ -14,44 +14,117 @@ esri_labels = dl.TileLayer(
 )
 
 location_w_coords = {
+        "Kajiado_1": [-2.8072, 37.5271],
+        "Kajiado_2": [-3.0318, 37.7068],
         "Laikipia_1": [0.2580, 36.5353],
         "Trans_Nzoia_1": [1.0199, 35.0211]
     }
+
+map_indicators = [
+    "ndmi_max",
+    "bulk_density",
+    "calcium_extractable",
+    "carbon_organic",
+    "carbon_total",
+    "clay_content",
+    "iron_extractable",
+    "magnesium_extractable",
+    "nitrogen_total",
+    "ph",
+    "phosphorous_extractable",
+    "potassium_extractable",
+    "sand_content",
+    "silt_content",
+    "stone_content",
+    "sulphur_extractable",
+    "texture_class",
+    "zinc_extractable"
+]
 
 layout = dbc.Container([
     dbc.Row([
         html.H1("Farmland analytics", style={"fontSize": "30px", "textAlign": "center"}),
         html.Div([
-            html.P("Select a region from the dropdown below:"),
-            dcc.Dropdown(
-                options=list(location_w_coords.keys()),
-                value="Trans_Nzoia_1",
-                id="location-dropdown",
-                style={
-                        "width": "200px",
-                        "backgroundColor": "#222",   # background of the dropdown
-                        "color": "black",            # selected text color
-                        "border": "1px solid #444",
-                    },
-                clearable=True
-            )
+            html.P("Select options from the dropdown menus below:"),
+            dbc.Row([
+                dbc.Col([
+                    # dcc.Dropdown(
+                    #     options=list(location_w_coords.keys()),
+                    #     value="Trans_Nzoia_1",
+                    #     id="location-dropdown",
+                    #     style={
+                    #             "width": "200px",
+                    #             "backgroundColor": "#222",   # background of the dropdown
+                    #             "color": "black",            # selected text color
+                    #             "border": "1px solid #444",
+                    #         },
+                    #     clearable=True
+                    # )
+                    dbc.Row([
+                        dbc.Col([
+                            dcc.Dropdown(
+                                options=list(location_w_coords.keys()),
+                                value="Trans_Nzoia_1",
+                                id="location-dropdown",
+                                style={
+                                        "width": "200px",
+                                        "backgroundColor": "#222",   # background of the dropdown
+                                        "color": "black",            # selected text color
+                                        "border": "1px solid #444",
+                                    },
+                                clearable=True
+                            )
+                        ]),
+                        dbc.Col([
+                            dcc.Dropdown(
+                                options=map_indicators,
+                                value="ndmi_max",
+                                id="indicator-dropdown",
+                                style={
+                                        "width": "200px",
+                                        "backgroundColor": "#222",   # background of the dropdown
+                                        "color": "black",            # selected text color
+                                        "border": "1px solid #444",
+                                    },
+                                clearable=True
+                            )
+                        ])
+                    ])
+                ])
+            ])
         ]),
         html.Hr()
     ]),
     dbc.Row([
         dbc.Col([
-            dl.Map(
-                id="map",
-                children=[
-                    esri_hybrid, esri_labels
-                ],
-                center=location_w_coords["Trans_Nzoia_1"],
-                zoom=12,
-                style={"height": "50vh"}
-            )
+            # dl.Map(
+            #     id="map",
+            #     children=[
+            #         esri_hybrid, esri_labels
+            #     ],
+            #     center=location_w_coords["Trans_Nzoia_1"],
+            #     zoom=12,
+            #     style={"height": "50vh"}
+            # )
+            dcc.Graph(id="choropleth_map")
         ], xs=6),
         dbc.Col([
             dcc.Graph(id="high_ndmi")
         ])
+    ]),
+    dbc.Row([
+        dbc.Col([
+            dcc.Graph(id="ndvi_peak_monthly")
+        ], width=4),
+        dbc.Col([
+            dcc.Graph(id="ndvi_peak_annual")
+        ], width=4),
+        dbc.Col([
+            dcc.Graph(id="moisture_level")
+        ], width=4)
+    ]),
+    html.Hr(),
+    dbc.Row([
+        html.H1("Drought-risk assessment", style={"fontSize": "30px", "textAlign": "center"})
     ])
 ])

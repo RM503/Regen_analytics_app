@@ -50,3 +50,11 @@ class MoistureContent(SQLModel, table=True):
     region: Optional[str] = Field(default=None)
     moisture_content: Optional[str] = Field(default=None)
     counts: Optional[int] = Field(default=None)
+
+class PeakVIDistribution(SQLModel, table=True):
+    # Table for storing ndvi, ndmi peaks
+    uuid: str = Field(default=None, primary_key=True)
+    region: Optional[str] = Field(default=None)
+    year: int = Field(default=None, primary_key=True)
+    ndvi_max: Optional[float] = Field(default=None)
+    ndmi_max: Optional[float] = Field(default=None)

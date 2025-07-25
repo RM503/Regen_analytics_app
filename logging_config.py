@@ -7,7 +7,12 @@ def setup_logging():
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler("logs/app.log", mode="a")
+            logging.handlers.RotatingFileHandler(
+                "logs/app.log", 
+                mode="a", 
+                maxBytes=5*1024*1024,
+                backupCount=5
+            )
         ]
     )
 

@@ -4,6 +4,15 @@
         <title> Regen Organics: Analytics App </title>
         <link rel="stylesheet" href="/static/style.css">
         <style>
+            .center-text {
+                text-align: center;
+            }
+
+            .center-image {
+                display: block;
+                margin-left: 50px;
+            }
+    
             .row {
                 display: flex;
                 align-items: left;
@@ -22,19 +31,21 @@
     <body>
         <div class="row">
             <div class="column">
-                <img src="/logos/datakind_logo.png" alt="DK Logo" >
+                <img src="/logos/datakind_logo.png" alt="DK Logo" class="center-image" >
             </div>
             <div class="column">
                 <img src="/logos/regen_logo.png" alt="Regen Logo" style="width: 400px; height: auto;" >
             </div>
         </div>
-        <h1> Welcome user! </h1>
-        <p> Please click on the links below to navigate to specific pages. </p>
+        <h1 class="center-text"> Welcome user! </h1>
+        <p> The app is still in the experimental stage and more 
+            functionality will be added. Please click on the links below to navigate to specific pages.
+            Please use documentation provided for details on app usage and data interpretation. 
+        </p>
         <ul>
             <li> <a href="/dash1/">Polygon generator</a> </li>
             <li> <a href="/dash2/">Farmland characteristics</a> </li>
             <li> <a href="/dash3/">Farmland analytics</a> </li>
         </ul>
-        <p> For ancillary information, refer to the links below </p>
     </body>
 </html>

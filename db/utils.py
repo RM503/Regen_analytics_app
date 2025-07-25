@@ -9,27 +9,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-# def concat_data_by_region(data_dir: str) -> tuple[pd.DataFrame, gpd.GeoDataFrame]:
-#     """
-#     This function takes a directory containing multiple gdf files of a similar
-#     type but of different regions and concatenates them into one.
-#     """
-#     file_paths = glob.glob(f"{data_dir}/*.feather")
-
-#     gdf_list = []
-#     for path in file_paths:
-#         REGION = path.split("/")[-1].split("_results")[0]
-
-#         gdf = gpd.read_feather(path, columns=["uuid", "area (acres)", "geometry"])
-#         gdf.insert(1, "region", REGION)
-#         gdf.rename(columns={"area (acres)" : "area"}, inplace=True)
-
-#         # Append to list 
-#         gdf_list.append(gdf)
-
-#     gdf_concat = pd.concat(gdf_list, ignore_index=True)
-#     return gdf_concat
-
 def concat_data_by_region(file_name: str) -> pd.DataFrame | gpd.GeoDataFrame:
     dir_list = glob.glob("data/*")
     data_list = []
