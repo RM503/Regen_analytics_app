@@ -28,7 +28,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-app = Dash(__name__, requests_pathname_prefix="/dash1/", external_stylesheets=[dbc.themes.DARKLY])
+app = Dash(__name__, requests_pathname_prefix="/polygon_generator/", external_stylesheets=[dbc.themes.DARKLY])
 
 app.title = "Polygon generator"
 app.layout = layout

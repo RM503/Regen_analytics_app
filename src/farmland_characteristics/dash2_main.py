@@ -11,15 +11,15 @@ from plotly.graph_objects import Figure
 import shapely
 from shapely.geometry import Polygon
 from .layout import layout
-from src.dash2.utils.vi_timeseries import combined_timeseries
-from src.dash2.utils.parse_contents import parse_contents
-from src.dash2.utils.farm_stats import calculate_farm_stats
-from src.dash2.utils.isda_soil_data import main as get_soil_data
+from src.farmland_characteristics.utils.vi_timeseries import combined_timeseries
+from src.farmland_characteristics.utils.parse_contents import parse_contents
+from src.farmland_characteristics.utils.farm_stats import calculate_farm_stats
+from src.farmland_characteristics.utils.isda_soil_data import main as get_soil_data
 import logging 
 
 logger = logging.getLogger(__name__)
 
-app = Dash(__name__, requests_pathname_prefix="/dash2/", external_stylesheets=[dbc.themes.DARKLY])
+app = Dash(__name__, requests_pathname_prefix="/farmland_characteristics/", external_stylesheets=[dbc.themes.DARKLY])
 app.title = "VI generator"
 app.layout = layout 
 

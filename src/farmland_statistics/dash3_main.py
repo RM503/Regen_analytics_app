@@ -14,7 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-app = Dash(__name__, requests_pathname_prefix="/dash3/", external_stylesheets=[dbc.themes.DARKLY])
+app = Dash(__name__, requests_pathname_prefix="/farmland_statistics/", external_stylesheets=[dbc.themes.DARKLY])
 app.title = "Farmland analytics"
 app.layout = layout
 
