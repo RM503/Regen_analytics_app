@@ -1,51 +1,80 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title> Regen Organics: Analytics App </title>
-        <link rel="stylesheet" href="/static/style.css">
-        <style>
-            .center-text {
-                text-align: center;
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Regen Organics: Analytics App</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .column img {
+            max-width: 100%;
+            height: auto;
+            max-height: 100px;
+            object-fit: contain;
+        }
+
+        @media (max-width: 600px) {
+            .row {
+                flex-direction: column;
+                gap: 20px;
             }
 
-            .center-image {
-                display: block;
-                margin-left: 50px;
-            }
-    
-            .row {
-                display: flex;
-                align-items: left;
-                justify-content: left;
-                gap: 20px;
-                margin-top: 50px;
-            }
-    
             .column img {
-                width: 100px; /* Adjust size as needed */
-                height: auto;
-                border: 1px solid #ccc; /* Optional: visual aid */
+                max-height: 80px;
             }
-        </style>
-    </head>
-    <body>
+
+            ul, p {
+                margin-left: 20px;
+                margin-right: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <form class="login-form" method="post" action="/login">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+    <div class="container">
         <div class="row">
             <div class="column">
-                <img src="/logos/datakind_logo.png" alt="DK Logo" class="center-image" >
+                <img src="/logos/datakind_logo.png" alt="Datakind Logo">
             </div>
             <div class="column">
-                <img src="/logos/regen_logo.png" alt="Regen Logo" style="width: 400px; height: auto;" >
+                <img src="/logos/regen_logo.png" alt="Regen Logo">
             </div>
         </div>
-        <h1 class="center-text"> Welcome user! </h1>
-        <p> The app is still in the experimental stage and more 
-            functionality will be added. Please click on the links below to navigate to specific pages.
-            Please use documentation provided for details on app usage and data interpretation. 
+
+        <h1>Welcome!</h1>
+        <p>
+            This app is currently in the experimental stage. More functionality will be added over time.
+            Use the links below to navigate to specific sections. Refer to the documentation for guidance on using the app and interpreting the data.
         </p>
+
         <ul>
-            <li> <a href="/dash1/">Polygon generator</a> </li>
-            <li> <a href="/dash2/">Farmland characteristics</a> </li>
-            <li> <a href="/dash3/">Farmland analytics</a> </li>
+            <li>
+                <a href="/initial_market_data/">Initial Market Data</a>: Exploratory analysis of early market research rounds.
+            </li>
+            <li>
+                <a href="/polygon_generator/">Polygon Generator</a>: Use map tools to draw and query new farm plots.
+            </li>
+            <li>
+                <a href="/farmland_characteristics/">Farmland Characteristics</a>: Upload farm polygons to analyze planting cycles, moisture, and soil properties.
+            </li>
+            <li>
+                <a href="/farmland_statistics/">Farmland Statistics</a>: View key indicators derived from analyzed farm data.
+            </li>
         </ul>
-    </body>
+    </div>
+</body>
 </html>
