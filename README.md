@@ -18,35 +18,32 @@ Even though the app was designed for a particular organization, it can be adapte
 The complete list of libraries required for running the app can be found in the `requirements.txt` or `pyproject.toml` files. To adapt the app for similar agricultural use cases, please clone the repository to your local device using
 
 
-<pre>
 ```
 git clone https://github.com/RM503/Regen_analytics_app.git
 ```
-</pre>
-It is understood that further modifications will require the user's own data. Regen Organics staff with access to API keys can user the app by first pulling it from Docker Hub using the following command
-<pre>
+
 ```
 docker pull rmahbub503/regen_app:v1
 ```
-</pre>
+
 Use the Docker file to first build the app
-<pre>
+
 ```
 docker build -t <whatever_name_you_want:version> .
 ```
-</pre>
+
 and run
-<pre>
+
 ```
 docker run --env-file .env.docker -p 8000:8000 <whatever_name_you_want:version>>
 ```
-</pre>
+
 In the run command, we explicitly inject the environment variables through a `.env.docker` file. A simpler method is to user the `docker-compose.yaml` file using the following command
-<pre>
+
 ```
 docker compose up
 ```
-</pre>
+
  After the preceding steps have been completed, the app can be run locally at http://0.0.0.0:8000. The app, at the moment, uses the following APIs and services
 
 * Google Earth Engine (GEE) Python API for calculating NDVI-NDMI curves from queried polygons
