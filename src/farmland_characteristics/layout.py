@@ -1,3 +1,5 @@
+# Layout for `Farmland Characteristics` page
+
 from datetime import datetime
 from dash import html, dcc
 import dash_bootstrap_components as dbc
@@ -6,9 +8,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Define blank canvas on which NDVI/NDMI time-seres are generated
+"""
+This defines a blank canvas on which the NDVI and NDVI time-series curves are
+displayed after GEE API finishes processing request. The canvas stays blank as
+a place holder before request are made.
+"""
 
-fig_ndvi = go.Figure()
+fig_ndvi = go.Figure() # NDVI
 fig_ndvi.update_layout(
     width=650,
     height=300,
@@ -22,7 +28,7 @@ fig_ndvi.update_layout(
     margin=dict(l=20, r=20, t=30, b=20)
 )
 
-fig_ndmi = go.Figure()
+fig_ndmi = go.Figure() # NDMI
 fig_ndmi.update_layout(
     width=650,
     height=300,
@@ -36,6 +42,7 @@ fig_ndmi.update_layout(
     margin=dict(l=20, r=20, t=30, b=20)
 )
 
+# Main layout 
 layout = dbc.Container([
     # Data stores
     dcc.Store(id="geometry_validation_check"),

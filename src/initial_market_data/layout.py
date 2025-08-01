@@ -79,7 +79,7 @@ layout = dbc.Container([
                 style={
                     "width": "200px",
                     "backgroundColor": "#222",
-                    "color": "#eee",
+                    "color": "black",
                     "border": "1px solid #444",
                 }
             ),

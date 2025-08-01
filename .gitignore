@@ -16,8 +16,10 @@ wheels/
 .dockerignore
 
 logs/
+config/
 
-src/dash2/test_data
+src/initial_market_data/plots_json
+src/farmland_characteristics/test_data
 
 db/data
 

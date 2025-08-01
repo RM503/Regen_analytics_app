@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 app = Dash(__name__, requests_pathname_prefix="/polygon_generator/", external_stylesheets=[dbc.themes.DARKLY])
 
-app.title = "Polygon generator"
+app.title = "Polygon Generator"
 app.layout = layout
 
 dotenv.load_dotenv(override=True)
@@ -109,7 +109,10 @@ def update_vector_layer(location: str) -> dict[str, Any]:
     Input("edit_control", "geojson"), 
     Input("location_dropdown", "value")
 )
-def update_output(geojson: dict, location: str) -> tuple[str | dict[str, Any], bool, str, bool, str, str | dict[str, Any]]:
+def update_output(
+        geojson: dict, 
+        location: str
+    ) -> tuple[str | dict[str, Any], bool, str, bool, str, str | dict[str, Any]]:
     """
     This function displays the geometries polygons drawn on
     the map, with a maximum of five polygons allowed.
@@ -149,6 +152,7 @@ def update_output(geojson: dict, location: str) -> tuple[str | dict[str, Any], b
                         if area > MAX_AREA:
                             show_area_alert = True
                             area_alert_message = f"⚠️ Polygon {i+1} exceeds area limit of {MAX_AREA} acres and was not added."
+                            
                             continue
                         
                         wkt = polygon.wkt
@@ -160,7 +164,7 @@ def update_output(geojson: dict, location: str) -> tuple[str | dict[str, Any], b
                         polygon_dict["geometry"].append(wkt)
 
                     except Exception as e:
-                        print(f"Error processing polygon {i+1}: {e}")
+                        logging.error(f"Error processing polygon {i+1}: {e}")
             else:
                 show_count_alert = True
                 count_alert_message = "⚠️ You can only draw up to 5 polygons."
