@@ -5,10 +5,14 @@ parts of the dashboard
 import os
 import dotenv
 from typing import Annotated
-from fastapi import Form, FastAPI, HTTPException, Request
-from fastapi.staticfiles import StaticFiles
+from fastapi import Form, FastAPI, Request
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.wsgi import WSGIMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from urllib.parse import urlencode
+from flask import Flask
 from supabase import create_client
 from auth.supabase_auth import supabase_auth
 from src.initial_market_data.dash0_main import app as dash0
@@ -21,12 +25,19 @@ from logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-dotenv.load_dotenv()
+# Load environment variables
+dotenv.load_dotenv(override=True)
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+SESSION_SECRET_KEY = os.environ.get("SESSION_SECRET_KEY")
+
+# Initialize Supabase client
 client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
+
+shared_flask_server = Flask(__name__)
 
 templates = Jinja2Templates(directory="templates") # Landing page template
 
@@ -46,22 +57,38 @@ app.mount("/farmland_statistics", WSGIMiddleware(dash3.server))
 
 @app.post("/login")
 async def post_login(
+        request: Request,
         email: Annotated[str, Form(...)],
         password: Annotated[str, Form(...)]
     ) -> dict[str, str]:
+    """
+    This function accepts user login credentials from the
+    HTML login form and performs authentication.
+
+    Args: (i) email: user's email
+          (ii) password: user's password
+    
+    Returns: If successfull, it returns user to the landing
+             page and stores session information.
+    """
     response = supabase_auth(email, password, client)
 
-    if not response.user or not response.session:
-        # These fields will be `None` if authentications fails
-        raise HTTPException(status_code=401, detail="Invalid credentials.")
+    if not response or not response.user or not response.session:
+        # This will show an unsuccessful login error on the landing page
+        # Redirect back to `/` with error message
+        query = urlencode({"error": "Invalid email or password."})
+        return RedirectResponse(url=f"/?{query}", status_code=302)
     
-    return {
-        "message": "Login successful",
-        "user_id": response.user.id,
-        "access_token": response.session.access_token
-    }
+    # Store session tokens
+    request.session["user_id"] = response.user.id
+    request.session["access_token"] = response.session.access_token
+    
+    return RedirectResponse(url="/", status_code=302)
 
 @app.get("/")
-async def root(request: Request):
+async def root(request: Request, error: str=None):
     # Landing page
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "error": error
+    })
