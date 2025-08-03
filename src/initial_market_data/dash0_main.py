@@ -3,11 +3,17 @@ import dash_bootstrap_components as dbc
 from plotly.graph_objects import Figure
 import plotly.io as pio
 from .layout import layout 
+from shared_server import shared_flask_server
 import logging 
 
 logger = logging.getLogger(__name__)
 
-app = Dash(__name__, requests_pathname_prefix="/initial_market_data/", external_stylesheets=[dbc.themes.DARKLY])
+app = Dash(
+    __name__, 
+    server=shared_flask_server, 
+    requests_pathname_prefix="/initial_market_data/", 
+    external_stylesheets=[dbc.themes.DARKLY]
+)
 
 app.title = "Initial Market Research"
 app.layout = layout 

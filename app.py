@@ -1,6 +1,6 @@
 """
 This is the main FastAPI backend that directs users to different
-parts of the dashboard
+parts of the dashboard.
 """
 import os
 import dotenv
@@ -8,11 +8,9 @@ from typing import Annotated
 from fastapi import Form, FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.wsgi import WSGIMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from urllib.parse import urlencode
-from flask import Flask
 from supabase import create_client
 from auth.supabase_auth import supabase_auth
 from src.initial_market_data.dash0_main import app as dash0
@@ -37,8 +35,6 @@ client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET_KEY)
 
-shared_flask_server = Flask(__name__)
-
 templates = Jinja2Templates(directory="templates") # Landing page template
 
 """
@@ -60,13 +56,14 @@ async def post_login(
         request: Request,
         email: Annotated[str, Form(...)],
         password: Annotated[str, Form(...)]
-    ) -> dict[str, str]:
+    ) -> Response:
     """
     This function accepts user login credentials from the
     HTML login form and performs authentication.
 
-    Args: (i) email: user's email
-          (ii) password: user's password
+    Args: (i) request: request object
+          (ii) email: user's email
+          (iii) password: user's password
     
     Returns: If successfull, it returns user to the landing
              page and stores session information.
@@ -76,19 +73,23 @@ async def post_login(
     if not response or not response.user or not response.session:
         # This will show an unsuccessful login error on the landing page
         # Redirect back to `/` with error message
-        query = urlencode({"error": "Invalid email or password."})
-        return RedirectResponse(url=f"/?{query}", status_code=302)
+        request.session["login_error"] = "Invalid email or password."
+        return RedirectResponse(url="/", status_code=302)
     
     # Store session tokens
     request.session["user_id"] = response.user.id
     request.session["access_token"] = response.session.access_token
     
+    request.session["login_success"] = "Login successful"
     return RedirectResponse(url="/", status_code=302)
 
 @app.get("/")
-async def root(request: Request, error: str=None):
+async def root(request: Request):
     # Landing page
+    success = request.session.pop("login_success", None)
+    error = request.session.pop("login_error", None)
     return templates.TemplateResponse("index.html", {
         "request": request,
+        "success": success,
         "error": error
     })

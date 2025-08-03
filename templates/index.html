@@ -39,6 +39,7 @@
     </style>
 </head>
 <body>
+    <!-- Login Form with error message -->
     <div class="login-wrapper">
         <form class="login-form" method="post" action="/login" method="post">
             <input type="text" name="email" placeholder="Email" required>
@@ -47,7 +48,11 @@
         </form>
 
         {% if error %}
-            <p style="color: red; font-size: 0.9rem; margin-top: 10px;">{{ error }}</p>
+            <p class="error-message" style="color: red; font-size: 0.9rem; margin-top: 10px;">{{ error }}</p>
+        {% endif %}
+
+        {% if success %}
+            <p class="success-message" style="color: green; font-size: 0.9rem; margin-top: 10px;">{{ success }}</p>
         {% endif %}
     </div>
     <div class="container">
@@ -59,9 +64,9 @@
                 <img src="/logos/regen_logo.png" alt="Regen Logo">
             </div>
         </div>
-
+        <!-- Main body and dashboard pages -->
         <h1>Welcome!</h1>
-        <p>
+        <p style="text-align: justify;">
             This app is currently in the experimental stage. More functionality will be added over time.
             Use the links below to navigate to specific sections. Refer to the documentation for guidance on using the app and interpreting the data.
         </p>
@@ -82,4 +87,18 @@
         </ul>
     </div>
 </body>
+<!-- JavaScript to hide error/success message after 5 seconds -->
+<script>
+    setTimeout(() => {
+      const error = document.querySelector('.error-message');
+      if (error) error.style.display = "none";
+    }, 5000);
+</script>
+<script>
+    setTimeout(() => {
+      const success = document.querySelector('.success-message');
+      if (success) success.style.display = "none";
+    }, 5000);
+</script>
+
 </html>

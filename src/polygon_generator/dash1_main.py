@@ -24,11 +24,17 @@ from shapely.geometry import shape
 from shapely.ops import transform
 from pyproj import Transformer
 from .layout import layout
+from shared_server import shared_flask_server
 import logging 
 
 logger = logging.getLogger(__name__)
 
-app = Dash(__name__, requests_pathname_prefix="/polygon_generator/", external_stylesheets=[dbc.themes.DARKLY])
+app = Dash(
+    __name__, 
+    server=shared_flask_server, 
+    requests_pathname_prefix="/polygon_generator/", 
+    external_stylesheets=[dbc.themes.DARKLY]
+)
 
 app.title = "Polygon Generator"
 app.layout = layout

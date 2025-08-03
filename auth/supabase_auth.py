@@ -1,8 +1,13 @@
+from pydantic import BaseModel, EmailStr, ValidationError
 from supabase import Client
 from gotrue.types import AuthResponse
 import logging 
 
 logging.basicConfig(level=logging.INFO)
+
+class SupabaseCredentials(BaseModel):
+    email: EmailStr # Must be an email string 
+    password: str
 
 def supabase_auth(
     supabase_auth_email: str,
@@ -10,8 +15,27 @@ def supabase_auth(
     client: Client
 ) -> AuthResponse | None:
     """
-    This function authenticates Supabase logins.
+    This function authenticates Supabase logins by first performing
+    a validation check on the entered types and then a user
+    authentication.
+
+    Args: (i) supabase_auth_email: user's email
+          (ii) supabase_auth_password: user's password
+          (iii) client: Supabase client
+    
+    Returns: AuthResponse or None
     """
+    try:
+        # Validate credentials
+        _ = SupabaseCredentials(
+            email=supabase_auth_email,
+            password=supabase_auth_password
+        )
+    except ValidationError as e:
+        logging.error(f"Invalid credentials: {e}")
+
+        return None
+
     try:
         # Authentication response
         response = client.auth.sign_in_with_password(
@@ -25,3 +49,5 @@ def supabase_auth(
         return response
     except Exception as e:
         logging.error(f"Error signing in user: {e}")
+
+        return None
