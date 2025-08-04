@@ -4,22 +4,14 @@ from uuid import uuid4
 from typing import Any
 import json
 import dash
-from dash import (
-    Dash, 
-    dash_table,
-    dcc,
-    Input,
-    Output,
-    State
-)
+from dash import Dash, dash_table, dcc, Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 import dotenv
-from sqlmodel import create_engine
-from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
+from supabase import create_client
 import pandas as pd
 import geopandas as gpd
+from shapely import wkb
 from shapely.geometry import shape
 from shapely.ops import transform
 from pyproj import Transformer
@@ -30,8 +22,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 app = Dash(
-    __name__, 
-    server=shared_flask_server, 
+    __name__,
     requests_pathname_prefix="/polygon_generator/", 
     external_stylesheets=[dbc.themes.DARKLY]
 )
@@ -41,11 +32,13 @@ app.layout = layout
 
 dotenv.load_dotenv(override=True)
 
-# Create SQLAlchemy engine
+# Initialize Supabase client
+# Direct connection with PostGre will bypass RLS
 try:
-    DB_URL = os.getenv("DB_URL")
-    engine = create_engine(DB_URL, echo=True)
-except OperationalError as e:
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+    client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
     logging.error(f"Connection failed: {e}")
 
 # Callbacks
@@ -83,11 +76,21 @@ def update_vector_layer(location: str) -> dict[str, Any]:
     # The `Default` location has no associated vector layer
     if location == "Default":
         return {"type": "FeatureCollection", "features": []}
-    
-    # Filter polygons by region from PostGIS db
-    query = text("SELECT * FROM farmpolygons WHERE region = :region")
-    gdf = gpd.read_postgis(query, engine, geom_col="geometry", params={"region": location})
 
+    response = (
+        client.table("farmpolygons")
+        .select("*")
+        .eq("region", location)
+        .execute()
+    )
+    if response.data is None or len(response.data) == 0:
+        logging.info(response.data)
+        return "No data found for this region"
+    
+    df = pd.DataFrame(response.data)
+    df["geometry"] = df["geometry"].apply(wkb.loads)
+
+    gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:4326")
     geojson_data = json.loads(gdf.to_json()) # Convert gdf to geojson
 
     # Include properties for tooltip features upon hovering
