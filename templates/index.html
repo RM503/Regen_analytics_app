@@ -41,11 +41,18 @@
 <body>
     <!-- Login Form with error message -->
     <div class="login-wrapper">
-        <form class="login-form" method="post" action="/login" method="post">
-            <input type="text" name="email" placeholder="Email" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
+
+        {% if token %}
+            <form class="login-form" action="/logout" method="post">
+                <button type="submit">Logout</button>
+            </form>
+        {% else %}
+            <form class="login-form" method="post" action="/login" method="post">
+                <input type="text" name="email" placeholder="Email" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+        {% endif %}
 
         {% if error %}
             <p class="error-message" style="color: red; font-size: 0.9rem; margin-top: 10px;">{{ error }}</p>
@@ -58,10 +65,10 @@
     <div class="container">
         <div class="row">
             <div class="column">
-                <img src="/logos/datakind_logo.png" alt="Datakind Logo">
+                <img src="{{ url_for('static', filename='logos/datakind_logo.png') }}" alt="Datakind Logo">
             </div>
             <div class="column">
-                <img src="/logos/regen_logo.png" alt="Regen Logo">
+                <img src="{{ url_for('static', filename='logos/regen_logo.png') }}" alt="Regen Logo">
             </div>
         </div>
         <!-- Main body and dashboard pages -->
@@ -76,7 +83,7 @@
                 <a href="/initial_market_data/">Initial Market Data</a>: Exploratory analysis of early market research rounds.
             </li>
             <li>
-                <a href="/polygon_generator/">Polygon Generator</a>: Use map tools to draw and query new farm plots.
+                <a href="/polygon_generator?token={{ token }}">Polygon Generator</a>: Use map tools to draw and query new farm plots.
             </li>
             <li>
                 <a href="/farmland_characteristics/">Farmland Characteristics</a>: Upload farm polygons to analyze planting cycles, moisture, and soil properties.
