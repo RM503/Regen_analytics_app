@@ -1,10 +1,20 @@
 # Flask backend test (check if access token can be passed to dash apps)
 import os 
 import dotenv
-from flask import Flask, redirect, request, render_template, session, url_for 
+from flask import (
+    Flask, 
+    make_response,
+    redirect, 
+    request, 
+    render_template, 
+    session, 
+    url_for
+) 
 from werkzeug.wrappers import Response
 from supabase import create_client
 from auth.supabase_auth import supabase_auth
+from src.polygon_generator.dash1_main import init_dash
+import logging 
 
 # Load environment variables
 dotenv.load_dotenv(override=True)
@@ -13,9 +23,12 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
 
 # Initialize Supabase client
-client = create_client(SUPABASE_URL, SUPABASE_KEY)
+try:
+    client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    logging.warning(f"Failed to create Supabase client: {e}")
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = SESSION_SECRET_KEY
 
 @app.route("/login", methods=["POST"])
@@ -38,14 +51,23 @@ def login() -> Response:
     session["access_token"] = response.session.access_token
     session["login_success"] = "Login successful!"
     
-    return redirect(f"/?token={response.session.access_token}")
+    r = make_response(redirect(url_for("root")))
+    r.set_cookie("access_token", response.session.access_token, httponly=True)
+    return r
 
 @app.route("/logout", methods=["POST"])
 def logout() -> Response:
-    session.clear() # clears all session keys
+    """
+    This function clears session keys and logs the user out.
+    """
+    session.clear() 
     session["login_success"] = "You have been logged out!"
 
-    return redirect("/")
+    return redirect(url_for("root"))
+
+@app.route("/get_session_token", methods=["GET"])
+def get_session_token() -> dict[str, str]:
+    pass
     
 @app.route("/", methods=["GET"])
 def root():
@@ -60,6 +82,8 @@ def root():
         error=error,
         token=token
     )
+
+init_dash(app)
 
 if __name__ == "__main__":
     app.run(debug=True)
