@@ -1,9 +1,18 @@
+# Supabase Python SDK scripts for authentication
+
+import os 
+import dotenv
 from pydantic import BaseModel, EmailStr, ValidationError
-from supabase import Client
+from flask import session
+from supabase import Client, create_client
 from gotrue.types import AuthResponse
 import logging 
 
 logging.basicConfig(level=logging.INFO)
+
+dotenv.load_dotenv(override=True)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 class SupabaseCredentials(BaseModel):
     email: EmailStr # Must be an email string 
@@ -51,3 +60,18 @@ def supabase_auth(
         logging.error(f"Error signing in user: {e}")
 
         return None
+    
+def get_supabase_client() -> Client | None:
+    """
+    Create Supabase client with authentication token. 
+    The client will only be invoked for performing `INSERT`
+    operations from authenticated users.
+    """
+    token = session.get("access_token")
+
+    if not token:
+        return None
+    client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    # Attach token for RLS authorization
+    client.postgrest.auth(token)
+    return client
