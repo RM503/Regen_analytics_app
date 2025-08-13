@@ -13,8 +13,16 @@ from flask import (
 from werkzeug.wrappers import Response
 from supabase import create_client
 from auth.supabase_auth import supabase_auth
-from src.polygon_generator.dash1_main import init_dash
+from src.initial_market_data.dash0_main import init_dash0
+from src.polygon_generator.dash1_main import init_dash1
+from src.farmland_characteristics.dash2_main import init_dash2
+from src.farmland_statistics.dash3_main import init_dash3
 import logging 
+from logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
+
 
 # Load environment variables
 dotenv.load_dotenv(override=True)
@@ -47,6 +55,7 @@ def login() -> Response:
         return redirect(url_for("root"))
     
     # Store session tokens
+    session["user_name"] = email.split("@")[0]
     session["user_id"] = response.user.id 
     session["access_token"] = response.session.access_token
     session["login_success"] = "Login successful!"
@@ -65,9 +74,9 @@ def logout() -> Response:
 
     return redirect(url_for("root"))
 
-@app.route("/get_session_token", methods=["GET"])
-def get_session_token() -> dict[str, str]:
-    pass
+# @app.route("/get_session_token", methods=["GET"])
+# def get_session_token() -> dict[str, str]:
+#     pass
     
 @app.route("/", methods=["GET"])
 def root():
@@ -75,15 +84,20 @@ def root():
     success = session.pop("login_success", None)
     error = session.pop("login_error", None)
     token = session.get("access_token", None)
+    username = session.get("user_name", None)
 
     return render_template(
         "index.html",
         success=success,
         error=error,
-        token=token
+        token=token,
+        username=username
     )
 
-init_dash(app)
+init_dash0(app)
+init_dash1(app)
+init_dash2(app)
+init_dash3(app)
 
 if __name__ == "__main__":
     app.run(debug=True)

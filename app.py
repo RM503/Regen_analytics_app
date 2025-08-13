@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from supabase import create_client
-from auth.supabase_auth import supabase_auth
+from auth.supabase_auth import supabase_auth, TokenForwardingMiddleware
 from src.initial_market_data.dash0_main import app as dash0
 from src.polygon_generator.dash1_main import app as dash1
 from src.farmland_characteristics.dash2_main import app as dash2
@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 dotenv.load_dotenv(override=True)
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-SESSION_SECRET_KEY = os.environ.get("SESSION_SECRET_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
 
 # Initialize Supabase client
 client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -47,7 +47,7 @@ app.mount("/logos", StaticFiles(directory="logos"), name="logos")
 
 # Dashboards start form here
 app.mount("/initial_market_data", WSGIMiddleware(dash0.server))
-app.mount("/polygon_generator", WSGIMiddleware(dash1.server))
+app.mount("/polygon_generator", WSGIMiddleware(TokenForwardingMiddleware(dash1.server)))
 app.mount("/farmland_characteristics", WSGIMiddleware(dash2.server))
 app.mount("/farmland_statistics", WSGIMiddleware(dash3.server))
 
@@ -77,19 +77,28 @@ async def post_login(
         return RedirectResponse(url="/", status_code=302)
     
     # Store session tokens
+    access_token = response.session.access_token
     request.session["user_id"] = response.user.id
     request.session["access_token"] = response.session.access_token
     
     request.session["login_success"] = "Login successful"
-    return RedirectResponse(url="/", status_code=302)
+    return RedirectResponse(url=f"/?token={access_token}", status_code=302)
+
+@app.get("/get_session_token")
+async def get_session_token(request: Request) -> dict[str, str]:
+    token = request.session.get("access_token")
+    return {"token": token}
 
 @app.get("/")
 async def root(request: Request):
     # Landing page
     success = request.session.pop("login_success", None)
     error = request.session.pop("login_error", None)
+    token = request.session.get("access_token", None)
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "success": success,
-        "error": error
+        "error": error,
+        "token": token
     })

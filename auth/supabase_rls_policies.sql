@@ -11,7 +11,6 @@ CREATE POLICY "Read farmpolygons"
 CREATE POLICY "Write farmpolygons"
     ON farmpolygons FOR INSERT, UPDATE
     TO authenticated
-    USING (TRUE)
     WITH CHECK (TRUE);
 
 -- HighNDMIDays
@@ -25,7 +24,6 @@ CREATE POLICY "Read highndmidays"
 CREATE POLICY "Write highndmidays"
     ON highndmidays FOR INSERT, UPDATE
     TO authenticated
-    USING (TRUE)
     WITH CHECK (TRUE);
 
 -- MoistureContent
@@ -39,7 +37,6 @@ CREATE POLICY "Read moisturecontent"
 CREATE POLICY "Write moisturecontent"
     ON moisturecontent FOR INSERT, UPDATE
     TO authenticated
-    USING (TRUE)
     WITH CHECK (TRUE);
 
 -- NDVIPeaksAnnual
@@ -53,7 +50,6 @@ CREATE POLICY "Read ndvipeaksannual"
 CREATE POLICY "Write ndvipeaksannual"
     ON ndvipeaksannual FOR INSERT, UPDATE
     TO authenticated
-    USING (TRUE)
     WITH CHECK (TRUE);
 
 -- NDVIPeaksMonthly
@@ -67,7 +63,6 @@ CREATE POLICY "Read ndvipeaksmonthly"
 CREATE POLICTY "Write ndvipeaksmonthly"
     ON ndvipeaksmonthly FOR INSERT, UPDATE
     TO authenticated
-    USING (TRUE)
     WITH CHECK (TRUE);
 
 -- NDVIPeaksPerFarm
@@ -80,8 +75,6 @@ CREATE POLICY "Read ndvipeaksperfarm"
 
 CREATE POLICY "Write ndvipeaksperfarm"
     ON ndvipeaksperfarm FOR INSERT, UPDATE
-    TO authenticated
-    USING (TRUE)
     WITH CHECK (TRUE);
 
 -- PeakVidistribution
@@ -95,7 +88,6 @@ CREATE POLICY "Read peakvidistribution"
 CREATE POLICY "Write peakvidistribution"
     ON peakvidistribution FOR INSERT, UPDATE
     TO authenticated
-    USING (TRUE)
     WITH CHECK (TRUE);
 
 -- Soildata
@@ -109,5 +101,4 @@ CREATE POLICY "Read soildata"
 CREATE POLICY "Write soildata"
     ON soildata FOR INSERT, UPDATE
     TO authenticated
-    USING (TRUE)
     WITH CHECK (TRUE);

@@ -21,208 +21,213 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-app = Dash(__name__, requests_pathname_prefix="/farmland_characteristics/", external_stylesheets=[dbc.themes.DARKLY])
-app.title = "Farmland Characteristics"
-app.layout = layout 
+def init_dash2(server):
+    app = Dash(
+        __name__, 
+        server=server,
+        routes_pathname_prefix="/farmland_characteristics/", 
+        external_stylesheets=[dbc.themes.DARKLY]
+    )
+    app.title = "Farmland Characteristics"
+    app.layout = layout 
 
-@app.callback(
-    Output("invalid_geometry_alert", "is_open"),
-    Output("invalid_geometry_alert", "children"),
-    Output("geometry_validation_check", "data"),
-    Input("upload_button", "n_clicks"),
-    State("polygon_input", "value"),
-    prevent_initial_call=True
-)
-def validate_input(n_clicks: int, polygon_wkt: str) -> tuple[bool, str, bool]:
-    """
-    This function is used to validate the type of geometry that can be typed
-    into the submission box. It will throw an error if object is anything
-    but a POLYGON geometry (even MULTIPOLYGON geometries).
+    @app.callback(
+        Output("invalid_geometry_alert", "is_open"),
+        Output("invalid_geometry_alert", "children"),
+        Output("geometry_validation_check", "data"),
+        Input("upload_button", "n_clicks"),
+        State("polygon_input", "value"),
+        prevent_initial_call=True
+    )
+    def validate_input(n_clicks: int, polygon_wkt: str) -> tuple[bool, str, bool]:
+        """
+        This function is used to validate the type of geometry that can be typed
+        into the submission box. It will throw an error if object is anything
+        but a POLYGON geometry (even MULTIPOLYGON geometries).
 
-    Args: (i) n_clicks - the click that initiates the callback
-          (ii) polygon_wkt - the polygon geometry in wkt notation
+        Args: (i) n_clicks - the click that initiates the callback
+            (ii) polygon_wkt - the polygon geometry in wkt notation
 
-    Returns: the return values depend on whether an improper polygon format has been
-             entered.  
-    """
-    try:
-        geom = shapely.wkt.loads(polygon_wkt)
+        Returns: the return values depend on whether an improper polygon format has been
+                entered.  
+        """
+        try:
+            geom = shapely.wkt.loads(polygon_wkt)
 
-        # Check instance type
-        if isinstance(geom, Polygon):
-            return False, "", True
+            # Check instance type
+            if isinstance(geom, Polygon):
+                return False, "", True
+            else:
+                return True, f"❌ Input is not a single POLYGON. Detected: {type(geom).__name__}", False
+        
+        except Exception as e:
+            return True, f"❌ Invalid WKT format: {str(e)}", False
+
+    @app.callback(
+        Output("ndvi_plot", "figure"),
+        Output("ndmi_plot", "figure"),
+        Output("farm_stats", "data"), # Stored for use in separate callback
+        Output("isda_soil_data", "data"),
+        Input("upload_button", "n_clicks"),
+        Input("upload-data", "contents"),
+        Input("upload-data", "filename"),
+        State("polygon_input", "value"),
+        State("geometry_validation_check", "data"),
+        prevent_initial_call=True
+    )
+    def plot_vi_data(
+        n_clicks: int, 
+        file_contents: Optional[str], 
+        file_name: Optional[str], 
+        polygon_wkt: Optional[str], 
+        is_valid: bool
+    ) -> tuple[Figure, Figure, dict[str, Any], dict[str, Any]]:
+        """
+        Depending on the validity check from the previous callback, the
+        NDVI-NDMI time-series plots will be generated.
+
+        Args: (i) n_clicks - the click that initiates the callback
+            (ii) file_contents - the contents of the uploaded file
+            (iii) file_name - the name of the uploaded file
+            (iv) polygon_wkt - the polygon geometry in wkt notation
+                if geometry entered through `upload` button
+            (v) is_valid - geometry validation (from previous callback)
+
+        Returns: (i) Figure - NDVI time-series plot
+                (ii) Figure - NDMI time-series plot
+                (iii) dict - farmland stats in json
+                (iv) dict - ISDA soil data in json
+        """
+        trigger = ctx.triggered_id
+        
+        """
+        The inputs are checked on whether they we submitted through the
+        box or uploaded as a file. Regardless of choice, the `combined_timeseries()`
+        function processes the time-series data and returns a dataframe.
+        """
+        if trigger == "upload_button":
+            if not is_valid:
+                PreventUpdate
+            df_RoI = pd.DataFrame({
+                "uuid": [str(uuid4())],
+                "region": [None],
+                "area (acres)": [np.nan],
+                "geometry": [polygon_wkt]
+            })
+            df = combined_timeseries(df_RoI)
+
+        elif trigger == "upload-data":
+            df_RoI = parse_contents(file_contents, file_name)
+            df = combined_timeseries(df_RoI)
+
         else:
-            return True, f"❌ Input is not a single POLYGON. Detected: {type(geom).__name__}", False
-    
-    except Exception as e:
-        return True, f"❌ Invalid WKT format: {str(e)}", False
+            raise PreventUpdate
 
-@app.callback(
-    Output("ndvi_plot", "figure"),
-    Output("ndmi_plot", "figure"),
-    Output("farm_stats", "data"), # Stored for use in separate callback
-    Output("isda_soil_data", "data"),
-    Input("upload_button", "n_clicks"),
-    Input("upload-data", "contents"),
-    Input("upload-data", "filename"),
-    State("polygon_input", "value"),
-    State("geometry_validation_check", "data"),
-    prevent_initial_call=True
-)
-def plot_vi_data(
-    n_clicks: int, 
-    file_contents: Optional[str], 
-    file_name: Optional[str], 
-    polygon_wkt: Optional[str], 
-    is_valid: bool
-) -> tuple[Figure, Figure, dict[str, Any], dict[str, Any]]:
-    """
-    Depending on the validity check from the previous callback, the
-    NDVI-NDMI time-series plots will be generated.
+        # Plot the data
+        uuid_list = df["uuid"].unique()
 
-    Args: (i) n_clicks - the click that initiates the callback
-          (ii) file_contents - the contents of the uploaded file
-          (iii) file_name - the name of the uploaded file
-          (iv) polygon_wkt - the polygon geometry in wkt notation
-              if geometry entered through `upload` button
-          (v) is_valid - geometry validation (from previous callback)
+        fig_ndvi = go.Figure()
+        fig_ndmi = go.Figure()
+        
+        for idx, uuid in enumerate(uuid_list):
+            df_uuid = df[df["uuid"] == uuid]
+            label = uuid[0:8] # show only the first 8 characters of uuid on legend
 
-    Returns: (i) Figure - NDVI time-series plot
-             (ii) Figure - NDMI time-series plot
-             (iii) dict - farmland stats in json
-             (iv) dict - ISDA soil data in json
-    """
-    trigger = ctx.triggered_id
-    
-    """
-    The inputs are checked on whether they we submitted through the
-    box or uploaded as a file. Regardless of choice, the `combined_timeseries()`
-    function processes the time-series data and returns a dataframe.
-    """
-    if trigger == "upload_button":
-        if not is_valid:
-            PreventUpdate
-        df_RoI = pd.DataFrame({
-            "uuid": [str(uuid4())],
-            "region": [None],
-            "area (acres)": [np.nan],
-            "geometry": [polygon_wkt]
-        })
-        df = combined_timeseries(df_RoI)
-
-    elif trigger == "upload-data":
-        df_RoI = parse_contents(file_contents, file_name)
-        df = combined_timeseries(df_RoI)
-
-    else:
-        raise PreventUpdate
-
-    # Plot the data
-    uuid_list = df["uuid"].unique()
-
-    fig_ndvi = go.Figure()
-    fig_ndmi = go.Figure()
-    
-    for idx, uuid in enumerate(uuid_list):
-        df_uuid = df[df["uuid"] == uuid]
-        label = uuid[0:8] # show only the first 8 characters of uuid on legend
-
-        fig_ndvi.add_trace(
-            go.Scatter(
-                x=df_uuid["date"], y=df_uuid["ndvi"], mode="lines+markers", name=label, connectgaps=True,
-                marker=dict(line=dict(color="black", width=1))
+            fig_ndvi.add_trace(
+                go.Scatter(
+                    x=df_uuid["date"], y=df_uuid["ndvi"], mode="lines+markers", name=label, connectgaps=True,
+                    marker=dict(line=dict(color="black", width=1))
+                )
             )
+
+            fig_ndmi.add_trace(
+                go.Scatter(
+                    x=df_uuid["date"], y=df_uuid["ndmi"], mode="lines+markers", name=label, connectgaps=True,
+                    marker=dict(line=dict(color="black", width=1))
+                )
+            )
+        fig_ndvi.update_layout(
+            xaxis_title="Date",
+            yaxis_title="NDVI",
+            xaxis=dict(tickformat="%Y-%m-%d"),
+            plot_bgcolor="#222",
+            paper_bgcolor="#222",
+            font=dict(color="white"),
+            margin=dict(l=20, r=20, t=30, b=20)
+        )
+        fig_ndmi.update_layout(
+            xaxis_title="Date",
+            yaxis_title="NDMI",
+            xaxis=dict(tickformat="%Y-%m-%d"),
+            plot_bgcolor="#222",
+            paper_bgcolor="#222",
+            font=dict(color="white"),
+            margin=dict(l=20, r=20, t=30, b=20)
+        )
+        
+        # Calculate farmland stats and retrieve iSDA soil data
+        df_stats = calculate_farm_stats(df)
+
+        # if iSDA API fails to return respose
+        try:
+            df_soil_data = asyncio.run(get_soil_data(df_RoI))
+        except ClientError as e:
+            logging.warning(f"Failed to retrieve iSDA soil data: {e}")
+            df_soil_data = [] # return an empty dataframe
+
+        return fig_ndvi, fig_ndmi, df_stats, df_soil_data
+
+    @app.callback(
+        Output("farm_stats_container", "children"),
+        Input("farm_stats", "data")
+    )
+    def display_farm_stats(df_stats: dict[str, Any]):
+        """
+        This function displays the farmland statistics data
+        as a Dash data table.
+
+        Args: df_stats - the farmland statistics data json
+        
+        Returns: farmland statistics Dash data table
+        """
+        if not df_stats:
+            raise PreventUpdate 
+        
+        return dash_table.DataTable(
+            data=df_stats,
+            columns=[{"name": col, "id": col} for col in df_stats[0].keys()],
+            page_size=10,
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left'},
+            style_header={'backgroundColor': '#111', 'color': 'white'},
+            style_data={'backgroundColor': '#222', 'color': 'white'},
         )
 
-        fig_ndmi.add_trace(
-            go.Scatter(
-                x=df_uuid["date"], y=df_uuid["ndmi"], mode="lines+markers", name=label, connectgaps=True,
-                marker=dict(line=dict(color="black", width=1))
-            )
+    @app.callback(
+        Output("isda_soil_data_container", "children"),
+        Input("isda_soil_data", "data"),
+        prevent_initial_call=True
+    )
+    def display_soil_data(df_soil: dict[str, Any]):
+        """
+        This function displays the isDA soil data
+        as a Dash data table.
+
+        Args: df_stats - the iSDA soil data json
+
+        Returns: iSDA soil Dash data table
+        """
+        if not df_soil:
+            dbc.Alert("Soil data failed to be retrieved", color="danger")
+        
+        return dash_table.DataTable(
+            data=df_soil,
+            columns=[{"name": col, "id": col} for col in df_soil[0].keys()],
+            page_size=10,
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left'},
+            style_header={'backgroundColor': '#111', 'color': 'white'},
+            style_data={'backgroundColor': '#222', 'color': 'white'},
         )
-    fig_ndvi.update_layout(
-        xaxis_title="Date",
-        yaxis_title="NDVI",
-        xaxis=dict(tickformat="%Y-%m-%d"),
-        plot_bgcolor="#222",
-        paper_bgcolor="#222",
-        font=dict(color="white"),
-        margin=dict(l=20, r=20, t=30, b=20)
-    )
-    fig_ndmi.update_layout(
-        xaxis_title="Date",
-        yaxis_title="NDMI",
-        xaxis=dict(tickformat="%Y-%m-%d"),
-        plot_bgcolor="#222",
-        paper_bgcolor="#222",
-        font=dict(color="white"),
-        margin=dict(l=20, r=20, t=30, b=20)
-    )
-    
-    # Calculate farmland stats and retrieve iSDA soil data
-    df_stats = calculate_farm_stats(df)
 
-    # if iSDA API fails to return respose
-    try:
-        df_soil_data = asyncio.run(get_soil_data(df_RoI))
-    except ClientError as e:
-        logging.warning(f"Failed to retrieve iSDA soil data: {e}")
-        df_soil_data = [] # return an empty dataframe
-
-    return fig_ndvi, fig_ndmi, df_stats, df_soil_data
-
-@app.callback(
-    Output("farm_stats_container", "children"),
-    Input("farm_stats", "data")
-)
-def display_farm_stats(df_stats: dict[str, Any]):
-    """
-    This function displays the farmland statistics data
-    as a Dash data table.
-
-    Args: df_stats - the farmland statistics data json
-    
-    Returns: farmland statistics Dash data table
-    """
-    if not df_stats:
-        raise PreventUpdate 
-    
-    return dash_table.DataTable(
-        data=df_stats,
-        columns=[{"name": col, "id": col} for col in df_stats[0].keys()],
-        page_size=10,
-        style_table={'overflowX': 'auto'},
-        style_cell={'textAlign': 'left'},
-        style_header={'backgroundColor': '#111', 'color': 'white'},
-        style_data={'backgroundColor': '#222', 'color': 'white'},
-    )
-
-@app.callback(
-    Output("isda_soil_data_container", "children"),
-    Input("isda_soil_data", "data"),
-    prevent_initial_call=True
-)
-def display_soil_data(df_soil: dict[str, Any]):
-    """
-    This function displays the isDA soil data
-    as a Dash data table.
-
-    Args: df_stats - the iSDA soil data json
-
-    Returns: iSDA soil Dash data table
-    """
-    if not df_soil:
-        dbc.Alert("Soil data failed to be retrieved", color="danger")
-    
-    return dash_table.DataTable(
-        data=df_soil,
-        columns=[{"name": col, "id": col} for col in df_soil[0].keys()],
-        page_size=10,
-        style_table={'overflowX': 'auto'},
-        style_cell={'textAlign': 'left'},
-        style_header={'backgroundColor': '#111', 'color': 'white'},
-        style_data={'backgroundColor': '#222', 'color': 'white'},
-    )
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    return app

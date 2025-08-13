@@ -1,4 +1,5 @@
 # Dashboard 1 main file (callbacks and etc.)
+from datetime import datetime
 from uuid import uuid4
 from typing import Any
 import json
@@ -8,6 +9,8 @@ import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 from flask import session
 from auth.supabase_auth import get_supabase_client
+from auth.db import engine
+from sqlalchemy import text
 import pandas as pd
 import geopandas as gpd
 from shapely.geometry import shape
@@ -18,7 +21,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def init_dash(server):
+def init_dash1(server):
     app = Dash(
         __name__,
         server=server,
@@ -64,22 +67,12 @@ def init_dash(server):
         if location == "Default":
             return {"type": "FeatureCollection", "features": []}
 
-        client = get_supabase_client()
-        response = (
-            client.table("farmpolygons")
-            .select("*")
-            .eq("region", location)
-            .limit(None)
-            .execute()
+        query = text(
+            "SELECT uuid, region, area, geometry FROM farmpolygons WHERE region = :region"
         )
-        if response.data is None or len(response.data) == 0:
-            logging.info(response.data)
-            return "No data found for this region"
-        
-        df = pd.DataFrame(response.data)
-        df["geometry"] = df["geometry"].apply(shape)
+        with engine.connect() as conn:
+            gdf = gpd.read_postgis(query, conn, geom_col="geometry", params={"region": location})
 
-        gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:4326")
         geojson_data = json.loads(gdf.to_json()) # Convert gdf to geojson
 
         # Include properties for tooltip features upon hovering
@@ -237,5 +230,41 @@ def init_dash(server):
 
         # Both conditions met
         return False  
+    
+    @app.callback(
+        Output("insert_notification", "children"),
+        Input("insert_button", "n_clicks"),
+        State("token_store", "data"),
+        State("polygons_store", "data"),
+        prevent_initial_call=True
+    )
+    def insert_polygons(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
+        """
+        This function inserts the polygons chosen using the interactive
+        tile-map into the `farmpolygons` table. This is only applicable
+        to authenticated users.
+
+        Args: (i) n_clicks - triggered by mouse click
+              (ii) token - login access token
+              (iii) stored_data - selected polygons
+
+        Returns: Status message of the insert operation
+        """
+        try:
+            client = get_supabase_client()
+
+            # Add timestamp
+            for item in stored_data:
+                item["created_at"] = datetime.now().isoformat()
+
+            response = client.table("farmpolygons").insert(stored_data).execute()
+
+            if response.data:
+                return f"Inserted {len(response.data)} polygons successfully.", True
+            else:
+                return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", True
+
+        except Exception as e:
+            logger.error(f"Error inserting polygons: {e}"), True
     
     return app

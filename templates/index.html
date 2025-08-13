@@ -1,3 +1,5 @@
+<!-- Landing page layout -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,9 +45,12 @@
     <div class="login-wrapper">
 
         {% if token %}
-            <form class="login-form" action="/logout" method="post">
-                <button type="submit">Logout</button>
-            </form>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <p style="margin: 0;">You are logged in as <strong>{{ username }}</strong></p>
+                <form action="/logout" method="post" class="login-form" style="margin: 0;">
+                    <button type="submit">Logout</button>
+                </form>
+            </div>
         {% else %}
             <form class="login-form" method="post" action="/login" method="post">
                 <input type="text" name="email" placeholder="Email" required>
@@ -83,7 +88,7 @@
                 <a href="/initial_market_data/">Initial Market Data</a>: Exploratory analysis of early market research rounds.
             </li>
             <li>
-                <a href="/polygon_generator?token={{ token }}">Polygon Generator</a>: Use map tools to draw and query new farm plots.
+                <a href="/polygon_generator">Polygon Generator</a>: Use map tools to draw and query new farm plots.
             </li>
             <li>
                 <a href="/farmland_characteristics/">Farmland Characteristics</a>: Upload farm polygons to analyze planting cycles, moisture, and soil properties.

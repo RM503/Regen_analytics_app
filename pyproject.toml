@@ -15,6 +15,7 @@ dependencies = [
     "geemap>=0.35.3",
     "geoalchemy2>=0.17.1",
     "geopandas>=1.1.1",
+    "gunicorn>=23.0.0",
     "ipython>=9.4.0",
     "jinja2>=3.1.6",
     "pandas>=2.3.0",
