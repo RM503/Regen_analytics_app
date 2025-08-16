@@ -37,7 +37,7 @@ SOIL_PROPERTIES = [
     "sulphur_extractable",
     "texture_class",
     "zinc_extractable"
-]
+] # List of soil properties to be requested from API
 
 def get_lat_lon(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -140,6 +140,8 @@ async def main(df: pd.DataFrame) -> pd.DataFrame:
         results = await asyncio.gather(*tasks)
 
     df_results = pd.DataFrame(results)
+
+    # Rename columns with appropriate units
     cols_to_rename = {
         "bulk_density": "bulk density (g/cm^3)",
         "calcium_extractable": "calcium extractable (ppm)",

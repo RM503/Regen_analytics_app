@@ -131,5 +131,9 @@ layout = dbc.Container([
     ]),
     html.Div(id="farm_stats_container"),
     html.Br(),
-    html.Div(id="isda_soil_data_container")
+    html.Div(id="isda_soil_data_container"),
+    html.Br(),
+    dcc.Interval(id="token_interval", interval=500, max_intervals=1),
+    dcc.Store(id="token_store", storage_type="session"),
+    dbc.Button("INSERT", id="insert_button", disabled=True)
 ])

@@ -1,4 +1,5 @@
 # Dash app with callbacks for `Farmland Characteristics` page
+import datetime as datetime
 from typing import Any, Optional
 from uuid import uuid4
 import asyncio
@@ -7,11 +8,13 @@ import pandas as pd
 from dash import Dash, Input, Output, State, ctx, dash_table 
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
+from flask import session
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure
 import shapely
 from shapely.geometry import Polygon
 from .layout import layout
+from auth.supabase_auth import get_supabase_client
 from src.farmland_characteristics.utils.vi_timeseries import combined_timeseries
 from src.farmland_characteristics.utils.parse_contents import parse_contents
 from src.farmland_characteristics.utils.farm_stats import calculate_farm_stats
@@ -197,10 +200,10 @@ def init_dash2(server):
             data=df_stats,
             columns=[{"name": col, "id": col} for col in df_stats[0].keys()],
             page_size=10,
-            style_table={'overflowX': 'auto'},
-            style_cell={'textAlign': 'left'},
-            style_header={'backgroundColor': '#111', 'color': 'white'},
-            style_data={'backgroundColor': '#222', 'color': 'white'},
+            style_table={"overflowX": "auto"},
+            style_cell={"textAlign": "left"},
+            style_header={"backgroundColor": "#111", "color": "white"},
+            style_data={"backgroundColor": "#222", "color": "white"},
         )
 
     @app.callback(
@@ -229,5 +232,68 @@ def init_dash2(server):
             style_header={'backgroundColor': '#111', 'color': 'white'},
             style_data={'backgroundColor': '#222', 'color': 'white'},
         )
+    @app.callback(
+        Output("token_store", "data"),
+        Input("token_interval", "n_intervals")
+    )
+    def store_token(_) -> str | None:
+        # Stores access token to dcc.Store in layout
+        token = session.get("access_token")
+
+        return token
+
+    @app.callback(
+        Output("insert_button", "disabled"),
+        Input("token_store", "data"),
+        Input("farm_stats", "data"),
+        Input("isda_soil_data", "data")
+    )
+    def enable_insert_button(
+        token: str,
+        farm_stats: dict[str, Any], 
+        isda_soil_data: dict[str, Any]
+    ) -> bool:
+
+        if not token:
+            return True
+        if not farm_stats or not isda_soil_data:
+            return True
+        return False
+    
+    # ========== Data INSERTs ==========
+
+    @app.callback(
+        Input("insert_button", "n_clicks"),
+        State("token_store", "data"), 
+        State("isda_soil_data", "data"),
+        prevent_initial_call=True
+    )
+    def insert_soil_data(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
+        """
+        This function INSERTs the iSDA soil data to the `soildata` table in
+        the Supabase database.
+
+         Args: (i) n_clicks - triggered by mouse click
+              (ii) token - login access token
+              (iii) stored_data - selected polygons
+
+        Returns: Status message of the insert operation
+        """
+        try:
+            client = get_supabase_client()
+
+            # Add timestamp 
+            for item in stored_data:
+                item["created_at"] = datetime.now().isoformat()
+
+            response = client.table("soildata").insert(stored_data).execute()
+
+            if response.data:
+                return f"Inserted {len(response.data)} polygons successfully.", True
+            else:
+                return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", True
+
+        except Exception as e:
+            logger.error(f"Error inserting polygons: {e}"), True
 
     return app
