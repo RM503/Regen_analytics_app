@@ -6,7 +6,31 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def calculate_farm_stats(df: pd.DataFrame) -> dict[str, Any]:
+def high_ndmi_days(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    This function generates an aggregate of high NDMI days
+    for each polygon. 
+    """
+    NDMI_THRESHOLD = 0.38
+
+    # Filter out high-NDMI farms based on threshold
+    df_high_ndmi = df[df["ndmi"] > NDMI_THRESHOLD].copy()
+    df_high_ndmi["year"] = df_high_ndmi["date"].dt.year
+
+    """ 
+    In order to be more precise about water-stress levels of farms, we
+    take into account the (annual) cumulative number of days spent in
+    high-NDMI zones.
+    """
+    df_high_ndmi_days = pd.DataFrame(
+        df_high_ndmi.groupby(["uuid", "year"]).apply(
+            lambda x: pd.Series({"high_ndmi_days": (x["date"].max() - x["date"].min()).days})
+        )
+    ).reset_index()
+
+    return df_high_ndmi_days
+
+def calculate_farm_stats(df: pd.DataFrame) -> dict[str, dict[str, Any]]:
     """
     This function generates summary statistics relevant to selected
     farmlands by analysing the NDVI and NDMI time-series data.
@@ -20,6 +44,9 @@ def calculate_farm_stats(df: pd.DataFrame) -> dict[str, Any]:
 
     if not pd.api.types.is_datetime64_any_dtype(df["date"]):
         df["date"] = pd.to_datetime(df["date"])
+    
+    if df["region"].isna().any():
+        df["region"] = df["region"].fillna("Unknown")
 
     # Round the areas to 3 decimal places
     if not df["area (acres)"].isna().any():
@@ -28,10 +55,16 @@ def calculate_farm_stats(df: pd.DataFrame) -> dict[str, Any]:
     WINDOW_SIZE = 7
     POLY_ORDER = 3
 
+    # Smooth the time-series data
     df["ndvi"] = df.groupby("uuid")["ndvi"].transform(lambda x: savgol_filter(x, WINDOW_SIZE, POLY_ORDER))
     df["ndmi"] = df.groupby("uuid")["ndmi"].transform(lambda x: savgol_filter(x, WINDOW_SIZE, POLY_ORDER))
 
     df_list = []
+
+    """
+    Here we assign peaks to each NDVI and NDMI time-series per uuid.
+    The peak-finding parameters are, in no way, optimized. 
+    """
     for _, group in df.groupby("uuid"):
         group = group.reset_index(drop=True)
         peaks, _ = find_peaks(
@@ -48,13 +81,20 @@ def calculate_farm_stats(df: pd.DataFrame) -> dict[str, Any]:
     df_concat["year"] = df_concat["date"].dt.year
     df_concat["month"] = df_concat["date"].dt.month
 
-    df_ndvi_peak = df_concat[df_concat["peak"]==1].copy()
+    df_ndvi_peak = df_concat[df_concat["peak"]==1].copy() 
     df_ndvi_peak_agg = df_ndvi_peak.groupby(["uuid", "year"]).agg(
         region=pd.NamedAgg(column="region", aggfunc="first"),
         area=pd.NamedAgg(column="area (acres)", aggfunc="first"),
         ndvi_peak_month=pd.NamedAgg(column="month", aggfunc=lambda x: " ".join(map(str, sorted(set(x)))) ),
         num_planting_cycles=pd.NamedAgg(column="ndvi", aggfunc="count")
     ).reset_index()
+
+    df_ndvi_max = (
+        df_concat.groupby(["uuid", "year", "region"])["ndvi"]
+        .max()
+        .reset_index(name="ndvi_max")
+    
+    )
 
     df_ndmi_max = (
         df_concat.groupby(["uuid", "year"])["ndmi"]
@@ -75,5 +115,15 @@ def calculate_farm_stats(df: pd.DataFrame) -> dict[str, Any]:
         }, inplace=True
     )
 
+    df_peakvidistribution = df_ndvi_max.merge(df_ndmi_max, on=["uuid", "year"], how="inner")
+    df_peakvidistribution = df_peakvidistribution[["uuid", "year", "region", "ndvi_max", "ndmi_max"]]
+
+    df_highndmidays = high_ndmi_days(df)
+
     # Return a serialized version of the dataframe to be kept in dcc.Store()
-    return df_stats.to_dict("records") 
+    
+    return {
+        "df_stats": df_stats.to_dict("records"),
+        "df_peakvidistribution": df_peakvidistribution.to_dict("records"),
+        "df_highndmidays": df_highndmidays.to_dict("records")
+    }

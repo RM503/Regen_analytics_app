@@ -184,7 +184,7 @@ def init_dash2(server):
         Output("farm_stats_container", "children"),
         Input("farm_stats", "data")
     )
-    def display_farm_stats(df_stats: dict[str, Any]):
+    def display_farm_stats(farm_stats: dict[str, Any]):
         """
         This function displays the farmland statistics data
         as a Dash data table.
@@ -193,6 +193,8 @@ def init_dash2(server):
         
         Returns: farmland statistics Dash data table
         """
+        df_stats = farm_stats["df_stats"]
+
         if not df_stats:
             raise PreventUpdate 
         
@@ -261,24 +263,26 @@ def init_dash2(server):
         return False
     
     # ========== Data INSERTs ==========
+    """
+    These are the tables that where data is directly inserted to when the INSERT
+    button is clicked by an authenticated user. The will call trigger functions
+    that will eventually update the other tables that appear in `farmland_statistics`
+    dashboard.
+    """
 
-    @app.callback(
-        Input("insert_button", "n_clicks"),
-        State("token_store", "data"), 
-        State("isda_soil_data", "data"),
-        prevent_initial_call=True
-    )
-    def insert_soil_data(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
+    def insert_soildata(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
         """
         This function INSERTs the iSDA soil data to the `soildata` table in
         the Supabase database.
 
-         Args: (i) n_clicks - triggered by mouse click
-              (ii) token - login access token
-              (iii) stored_data - selected polygons
+        Args: (i) n_clicks - triggered by mouse click
+            (ii) token - login access token
+            (iii) stored_data - selected polygons
 
         Returns: Status message of the insert operation
         """
+        TABLE_NAME = "soildata"
+
         try:
             client = get_supabase_client()
 
@@ -286,7 +290,7 @@ def init_dash2(server):
             for item in stored_data:
                 item["created_at"] = datetime.now().isoformat()
 
-            response = client.table("soildata").insert(stored_data).execute()
+            response = client.table(TABLE_NAME).insert(stored_data).execute()
 
             if response.data:
                 return f"Inserted {len(response.data)} polygons successfully.", True
@@ -295,5 +299,42 @@ def init_dash2(server):
 
         except Exception as e:
             logger.error(f"Error inserting polygons: {e}"), True
+
+    @app.callback(
+        Input("insert_button", "n_clicks"),
+        State("token_store", "data"), 
+        State("farm_stats", "data"),
+        prevent_initial_call=True
+    )
+    def insert_all_farm_stats(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
+        """
+        This function performs an INSERT of all the farm stat tables stored in
+        the `farm_stats` dcc.Store.
+        """
+
+        # List of data tables stored in dcc.Store
+        TABLES = ["highndmidays", "peakvidistribution", "soildata"]
+
+        client = get_supabase_client()
+        messages = []
+
+        try:
+            for TABLE in TABLES:
+                dataset = stored_data[TABLE] # data corresponding to particular table
+                if dataset:
+                    response = client.table(TABLE).insert(dataset).execute()
+
+                    if response.data:
+                        messages.append(f"✅ {TABLE}: Inserted {len(response.data)} rows.")
+                    else:
+                        messages.append(
+                            f"❌ {TABLE}: Insert failed ({getattr(response, 'error', 'Unknown error')})."
+                        )
+
+            return " | ".join(messages) if messages else "⚠️ No data to insert."
+
+        except Exception as e:
+            logger.error(f"Insert error: {e}")
+            return f"❌ Error inserting data: {e}"
 
     return app
