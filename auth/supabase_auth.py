@@ -2,10 +2,13 @@
 
 import os 
 import dotenv
+import psycopg2
+from psycopg2.extensions import connection
 from pydantic import BaseModel, EmailStr, ValidationError
 from flask import session
 from supabase import Client, create_client
 from gotrue.types import AuthResponse
+from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
 import logging 
 
 logging.basicConfig(level=logging.INFO)
@@ -61,17 +64,30 @@ def supabase_auth(
 
         return None
     
-def get_supabase_client() -> Client | None:
+def get_supabase_client() -> Client | connection | None:
     """
     Create Supabase client with authentication token. 
     The client will only be invoked for performing `INSERT`
-    operations from authenticated users.
+    operations from authenticated users. This also allows to 
+    test PostgreSQL operations on a local database.
     """
     token = session.get("access_token")
 
-    if not token:
-        return None
-    client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    # Attach token for RLS authorization
-    client.postgrest.auth(token)
-    return client
+    if not USE_LOCAL_DB:
+        # If not using local database
+        if not token:
+            logging.warning("No access token found in session.")
+            return None
+        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        # Attach token for RLS authorization
+        client.postgrest.auth(token)
+        return client
+    else:
+        # When using local database
+        try:
+            conn = psycopg2.connect(**LOCAL_DB_CONFIG)
+            conn.autocommit = True 
+            return conn
+        except Exception as e:
+            logging.error(f"Error connecting to local database: {e}")
+            return None
