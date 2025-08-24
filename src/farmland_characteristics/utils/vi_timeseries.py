@@ -3,6 +3,7 @@ import os
 import dotenv
 from uuid import uuid4
 import ee
+import numpy as np
 import pandas as pd
 from shapely import wkt
 from shapely.geometry import shape
@@ -181,6 +182,6 @@ def combined_timeseries(RoI: pd.DataFrame) -> pd.DataFrame:
         uuid = row["uuid"] if "uuid" in RoI.columns else str(uuid4())
         df.insert(0, "uuid", uuid)
         df.insert(1, "region", row["region"])
-        df.insert(2, "area (acres)", row["area (acres)"])
+        df.insert(2, "area (acres)", row.get("area (acres)", np.nan))
         df_list.append(df)
     return pd.concat(df_list, ignore_index=True)

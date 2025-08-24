@@ -135,5 +135,6 @@ layout = dbc.Container([
     html.Br(),
     dcc.Interval(id="token_interval", interval=500, max_intervals=1),
     dcc.Store(id="token_store", storage_type="session"),
-    dbc.Button("INSERT", id="insert_button", disabled=True)
+    dbc.Button("INSERT", id="insert_button", disabled=True),
+    dbc.Alert(id="insert_notification", is_open=False, color="success")
 ])
