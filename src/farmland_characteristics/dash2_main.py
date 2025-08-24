@@ -1,8 +1,9 @@
 # Dash app with callbacks for `Farmland Characteristics` page
-import datetime as datetime
+from datetime import datetime
 from typing import Any, Optional
 from uuid import uuid4
 import asyncio
+import dotenv
 import numpy as np
 import pandas as pd
 from dash import Dash, Input, Output, State, ctx, dash_table 
@@ -20,9 +21,21 @@ from src.farmland_characteristics.utils.parse_contents import parse_contents
 from src.farmland_characteristics.utils.farm_stats import calculate_farm_stats
 from src.farmland_characteristics.utils.isda_soil_data import main as get_soil_data
 from aiohttp import ClientError
+from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
 import logging 
 
 logger = logging.getLogger(__name__)
+
+dotenv.load_dotenv()
+
+if USE_LOCAL_DB:
+    logging.info(
+        f"Running in LOCAL mode — connecting to PostgreSQL at "
+        f"{LOCAL_DB_CONFIG['host']}:{LOCAL_DB_CONFIG['port']}, "
+        f"database '{LOCAL_DB_CONFIG['database']}'."
+    )
+else:
+    logging.info("Running in SUPABASE mode.")
 
 def init_dash2(server):
     app = Dash(
@@ -193,6 +206,10 @@ def init_dash2(server):
         
         Returns: farmland statistics Dash data table
         """
+        if not farm_stats or "df_stats" not in farm_stats:
+            # farm_stats is None, empty, or missing expected keys
+            raise PreventUpdate
+        
         df_stats = farm_stats["df_stats"]
 
         if not df_stats:
@@ -269,7 +286,12 @@ def init_dash2(server):
     that will eventually update the other tables that appear in `farmland_statistics`
     dashboard.
     """
-
+    @app.callback(
+        Input("insert_button", "n_clicks"),
+        State("token_store", "data"), 
+        State("isda_soil_data", "data"),
+        prevent_initial_call=True
+    )
     def insert_soildata(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
         """
         This function INSERTs the iSDA soil data to the `soildata` table in
@@ -301,37 +323,73 @@ def init_dash2(server):
             logger.error(f"Error inserting polygons: {e}"), True
 
     @app.callback(
+        Output("insert_status", "children"),
         Input("insert_button", "n_clicks"),
         State("token_store", "data"), 
         State("farm_stats", "data"),
         prevent_initial_call=True
     )
-    def insert_all_farm_stats(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
+    def insert_all_farm_stats(n_clicks: int, token: str, stored_data: dict[str, Any]) -> str:
         """
         This function performs an INSERT of all the farm stat tables stored in
         the `farm_stats` dcc.Store.
         """
 
         # List of data tables stored in dcc.Store
-        TABLES = ["highndmidays", "peakvidistribution", "soildata"]
+        TABLES = ["highndmidays", "peakvidistribution", "ndvipeaksperfarm"]
 
-        client = get_supabase_client()
         messages = []
 
         try:
-            for TABLE in TABLES:
-                dataset = stored_data[TABLE] # data corresponding to particular table
-                if dataset:
-                    response = client.table(TABLE).insert(dataset).execute()
+            client = get_supabase_client()
 
-                    if response.data:
-                        messages.append(f"✅ {TABLE}: Inserted {len(response.data)} rows.")
-                    else:
-                        messages.append(
-                            f"❌ {TABLE}: Insert failed ({getattr(response, 'error', 'Unknown error')})."
-                        )
+            if USE_LOCAL_DB:
+                # Local PostgreSQL mode
+                with client.cursor() as cursor:
+                    for TABLE in TABLES:
+                        dataset = stored_data[f"df_{TABLE}"]
 
-            return " | ".join(messages) if messages else "⚠️ No data to insert."
+                        logging.info(f"Processing {TABLE}: {type(dataset)} -> {dataset[:2] if dataset else 'Empty'}")
+                        
+                        if not dataset:
+                            continue 
+
+                        if not isinstance(dataset[0], dict):
+                            raise TypeError(f"Expected list of dicts for {TABLE}, got {type(dataset[0])}")
+                        
+                        for row in dataset:
+                            # Add a timestamp
+                            row.setdefault("created_at", datetime.now().isoformat())
+
+                            columns = ', '.join(row.keys())
+                            placeholders = ', '.join(['%s'] * len(row))
+                            values = tuple(row.values())
+
+                            query = f"INSERT INTO {TABLE} ({columns}) VALUES ({placeholders})"
+                            cursor.execute(query, values)
+
+                        messages.append(f"✅ {TABLE}: Inserted {len(dataset)} rows (Local DB).")
+            
+                return " | ".join(messages)
+
+            else:
+                # Supabase mode
+                for TABLE in TABLES:
+                    dataset = stored_data[f"df_{TABLE}"] # data corresponding to particular table
+                    if dataset:
+                        for item in dataset:
+                            item["created_at"] = datetime.now().isoformat()
+
+                        response = client.table(TABLE).insert(dataset).execute()
+
+                        if response.data:
+                            messages.append(f"✅ {TABLE}: Inserted {len(response.data)} rows.")
+                        else:
+                            messages.append(
+                                f"❌ {TABLE}: Insert failed ({getattr(response, 'error', 'Unknown error')})."
+                            )
+
+                return " | ".join(messages) if messages else "⚠️ No data to insert."
 
         except Exception as e:
             logger.error(f"Insert error: {e}")
