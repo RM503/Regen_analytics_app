@@ -184,4 +184,5 @@ def combined_timeseries(RoI: pd.DataFrame) -> pd.DataFrame:
         df.insert(1, "region", row["region"])
         df.insert(2, "area (acres)", row.get("area (acres)", np.nan))
         df_list.append(df)
+   
     return pd.concat(df_list, ignore_index=True)
