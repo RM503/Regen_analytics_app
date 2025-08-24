@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
 
-def ndvi_peask_per_farm(df: pd.DataFrame) -> pd.DataFrame:
+def ndvi_peaks_per_farm(df: pd.DataFrame) -> pd.DataFrame:
     """
     This function groups NDVI time-series data by uuid and applies peak-finding algorithm
     in order to identify NDVI peaks occurring in each identified farm.
@@ -70,5 +70,9 @@ def ndvi_peask_per_farm(df: pd.DataFrame) -> pd.DataFrame:
     df_merged["year"] = df_merged["ndvi_peak_date"].dt.year 
     df_merged["peak_position"] = (df_merged.groupby(["uuid", "year"]).cumcount() + 1).astype("int")
     df_merged.drop(columns=["year"], inplace=True)
+
+    # Add back the `region` column
+    df_regions = df[['uuid', 'region']].drop_duplicates()
+    df_merged = df_merged.merge(df_regions, on='uuid', how='left')
 
     return df_merged

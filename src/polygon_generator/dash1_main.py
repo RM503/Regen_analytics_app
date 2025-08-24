@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import uuid4
 from typing import Any
 import json
+import dotenv
 import dash
 from dash import Dash, dash_table, dcc, Input, Output, State
 import dash_bootstrap_components as dbc
@@ -17,9 +18,22 @@ from shapely.geometry import shape
 from shapely.ops import transform
 from pyproj import Transformer
 from .layout import layout
+from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
+
 import logging 
 
 logger = logging.getLogger(__name__)
+
+dotenv.load_dotenv()
+
+if USE_LOCAL_DB:
+    logging.info(
+        f"Running in LOCAL mode — connecting to PostgreSQL at "
+        f"{LOCAL_DB_CONFIG['host']}:{LOCAL_DB_CONFIG['port']}, "
+        f"database '{LOCAL_DB_CONFIG['database']}'."
+    )
+else:
+    logging.info("Running in SUPABASE mode.")
 
 def init_dash1(server):
     app = Dash(
@@ -197,6 +211,7 @@ def init_dash1(server):
     def download_polygons(n_clicks: int, stored_data: dict[str, Any]) -> Any:
         if stored_data:
             df = pd.DataFrame(stored_data)
+            df.rename(columns={"area": "area (acres)"}, inplace=True)
             return dcc.send_data_frame(df.to_csv, "polygons.csv", index=False)
         return dash.no_update
     
@@ -250,19 +265,35 @@ def init_dash1(server):
 
         Returns: Status message of the insert operation
         """
+        TABLE_NAME = "farmpolygons"
         try:
             client = get_supabase_client()
 
-            # Add timestamp
-            for item in stored_data:
-                item["created_at"] = datetime.now().isoformat()
+            if USE_LOCAL_DB:
+                with client.cursor() as cursor:
+                    for row in stored_data:
+                        row.setdefault("created_at", datetime.now().isoformat())
 
-            response = client.table("farmpolygons").insert(stored_data).execute()
+                        columns = ', '.join(row.keys())
+                        placeholders = ', '.join(['%s'] * len(row))
+                        values = tuple(row.values())
 
-            if response.data:
-                return f"Inserted {len(response.data)} polygons successfully.", True
+                        query = f"INSERT INTO {TABLE_NAME} ({columns}) VALUES ({placeholders})"
+                        cursor.execute(query, values)
+
+                    return f"Inserted {len(stored_data)} polygons successfully.", True
+
             else:
-                return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", True
+                # Add timestamp
+                for item in stored_data:
+                    item["created_at"] = datetime.now().isoformat()
+
+                response = client.table(TABLE_NAME).insert(stored_data).execute()
+
+                if response.data:
+                    return f"Inserted {len(response.data)} polygons successfully.", True
+                else:
+                    return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", True
 
         except Exception as e:
             logger.error(f"Error inserting polygons: {e}"), True

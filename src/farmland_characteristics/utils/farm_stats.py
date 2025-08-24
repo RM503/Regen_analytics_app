@@ -1,6 +1,7 @@
 from typing import Any
 import numpy as np
 import pandas as pd
+from .ndvi_peaks import ndvi_peaks_per_farm
 from scipy.signal import savgol_filter, find_peaks
 import logging 
 
@@ -15,18 +16,20 @@ def high_ndmi_days(df: pd.DataFrame) -> pd.DataFrame:
 
     # Filter out high-NDMI farms based on threshold
     df_high_ndmi = df[df["ndmi"] > NDMI_THRESHOLD].copy()
-    df_high_ndmi["year"] = df_high_ndmi["date"].dt.year
 
     """ 
     In order to be more precise about water-stress levels of farms, we
     take into account the (annual) cumulative number of days spent in
     high-NDMI zones.
     """
-    df_high_ndmi_days = pd.DataFrame(
-        df_high_ndmi.groupby(["uuid", "year"]).apply(
-            lambda x: pd.Series({"high_ndmi_days": (x["date"].max() - x["date"].min()).days})
-        )
-    ).reset_index()
+    df_high_ndmi["year"] = df_high_ndmi["date"].dt.year
+
+    df_high_ndmi_days = (
+        df_high_ndmi.groupby(["uuid", "year"], as_index=False)
+        .apply(lambda g: pd.Series({
+            "high_ndmi_days": (g["date"].max() - g["date"].min()).days
+        }))
+    )
 
     return df_high_ndmi_days
 
@@ -119,11 +122,13 @@ def calculate_farm_stats(df: pd.DataFrame) -> dict[str, dict[str, Any]]:
     df_peakvidistribution = df_peakvidistribution[["uuid", "year", "region", "ndvi_max", "ndmi_max"]]
 
     df_highndmidays = high_ndmi_days(df)
+    df_ndvipeaksperfarm = ndvi_peaks_per_farm(df)
 
     # Return a serialized version of the dataframe to be kept in dcc.Store()
     
     return {
         "df_stats": df_stats.to_dict("records"),
         "df_peakvidistribution": df_peakvidistribution.to_dict("records"),
-        "df_highndmidays": df_highndmidays.to_dict("records")
+        "df_highndmidays": df_highndmidays.to_dict("records"),
+        "df_ndvipeaksperfarm": df_ndvipeaksperfarm.to_dict("records")
     }
