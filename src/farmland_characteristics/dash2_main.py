@@ -16,6 +16,9 @@ import shapely
 from shapely.geometry import Polygon
 from .layout import layout
 from auth.supabase_auth import get_supabase_client
+from db.db_utils import db_connect
+from supabase import Client
+import psycopg2
 from src.farmland_characteristics.utils.vi_timeseries import combined_timeseries
 from src.farmland_characteristics.utils.parse_contents import parse_contents
 from src.farmland_characteristics.utils.farm_stats import calculate_farm_stats
@@ -286,44 +289,44 @@ def init_dash2(server):
     that will eventually update the other tables that appear in `farmland_statistics`
     dashboard.
     """
+    # @app.callback(
+    #     Input("insert_button", "n_clicks"),
+    #     State("token_store", "data"), 
+    #     State("isda_soil_data", "data"),
+    #     prevent_initial_call=True
+    # )
+    # def insert_soildata(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
+    #     """
+    #     This function INSERTs the iSDA soil data to the `soildata` table in
+    #     the Supabase database.
+
+    #     Args: (i) n_clicks - triggered by mouse click
+    #         (ii) token - login access token
+    #         (iii) stored_data - selected polygons
+
+    #     Returns: Status message of the insert operation
+    #     """
+    #     TABLE_NAME = "soildata"
+
+    #     try:
+    #         client = get_supabase_client()
+
+    #         # Add timestamp 
+    #         for item in stored_data:
+    #             item["created_at"] = datetime.now().isoformat()
+
+    #         response = client.table(TABLE_NAME).insert(stored_data).execute()
+
+    #         if response.data:
+    #             return f"Inserted {len(response.data)} polygons successfully.", True
+    #         else:
+    #             return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", True
+
+    #     except Exception as e:
+    #         logger.error(f"Error inserting polygons: {e}"), True
+
     @app.callback(
-        Input("insert_button", "n_clicks"),
-        State("token_store", "data"), 
-        State("isda_soil_data", "data"),
-        prevent_initial_call=True
-    )
-    def insert_soildata(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
-        """
-        This function INSERTs the iSDA soil data to the `soildata` table in
-        the Supabase database.
-
-        Args: (i) n_clicks - triggered by mouse click
-            (ii) token - login access token
-            (iii) stored_data - selected polygons
-
-        Returns: Status message of the insert operation
-        """
-        TABLE_NAME = "soildata"
-
-        try:
-            client = get_supabase_client()
-
-            # Add timestamp 
-            for item in stored_data:
-                item["created_at"] = datetime.now().isoformat()
-
-            response = client.table(TABLE_NAME).insert(stored_data).execute()
-
-            if response.data:
-                return f"Inserted {len(response.data)} polygons successfully.", True
-            else:
-                return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", True
-
-        except Exception as e:
-            logger.error(f"Error inserting polygons: {e}"), True
-
-    @app.callback(
-        Output("insert_status", "children"),
+        Output("insert_notification", "children"),
         Input("insert_button", "n_clicks"),
         State("token_store", "data"), 
         State("farm_stats", "data"),
@@ -341,11 +344,11 @@ def init_dash2(server):
         messages = []
 
         try:
-            client = get_supabase_client()
 
             if USE_LOCAL_DB:
+                conn = db_connect()
                 # Local PostgreSQL mode
-                with client.cursor() as cursor:
+                with conn.cursor() as cursor:
                     for TABLE in TABLES:
                         dataset = stored_data[f"df_{TABLE}"]
 
@@ -373,6 +376,7 @@ def init_dash2(server):
                 return " | ".join(messages)
 
             else:
+                client = get_supabase_client()
                 # Supabase mode
                 for TABLE in TABLES:
                     dataset = stored_data[f"df_{TABLE}"] # data corresponding to particular table

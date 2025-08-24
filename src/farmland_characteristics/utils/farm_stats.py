@@ -25,7 +25,7 @@ def high_ndmi_days(df: pd.DataFrame) -> pd.DataFrame:
     df_high_ndmi["year"] = df_high_ndmi["date"].dt.year
 
     df_high_ndmi_days = (
-        df_high_ndmi.groupby(["uuid", "year"], as_index=False)
+        df_high_ndmi.groupby(["uuid", "region", "year"], as_index=False)
         .apply(lambda g: pd.Series({
             "high_ndmi_days": (g["date"].max() - g["date"].min()).days
         }))
