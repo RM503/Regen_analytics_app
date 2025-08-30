@@ -11,6 +11,7 @@ import dash_leaflet as dl
 from flask import session
 from auth.supabase_auth import get_supabase_client
 from auth.db import engine
+from db.db_utils import db_connect
 from sqlalchemy import text
 import pandas as pd
 import geopandas as gpd
@@ -248,12 +249,14 @@ def init_dash1(server):
     
     @app.callback(
         Output("insert_notification", "children"),
+        Output("insert_notification", "color"),
+        Output("insert_notification", "is_open"),
         Input("insert_button", "n_clicks"),
         State("token_store", "data"),
         State("polygons_store", "data"),
         prevent_initial_call=True
     )
-    def insert_polygons(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
+    def insert_polygons(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, str, bool]:
         """
         This function inserts the polygons chosen using the interactive
         tile-map into the `farmpolygons` table. This is only applicable
@@ -267,10 +270,10 @@ def init_dash1(server):
         """
         TABLE_NAME = "farmpolygons"
         try:
-            client = get_supabase_client()
+            conn = db_connect()
 
             if USE_LOCAL_DB:
-                with client.cursor() as cursor:
+                with conn.cursor() as cursor:
                     for row in stored_data:
                         row.setdefault("created_at", datetime.now().isoformat())
 
@@ -281,9 +284,11 @@ def init_dash1(server):
                         query = f"INSERT INTO {TABLE_NAME} ({columns}) VALUES ({placeholders})"
                         cursor.execute(query, values)
 
-                    return f"Inserted {len(stored_data)} polygons successfully.", True
+                    logger.info(f"Inserted {len(stored_data)} polygons successfully.")
+                    return f"Inserted {len(stored_data)} polygons successfully.", "success", True
 
             else:
+                client = get_supabase_client()
                 # Add timestamp
                 for item in stored_data:
                     item["created_at"] = datetime.now().isoformat()
@@ -291,11 +296,13 @@ def init_dash1(server):
                 response = client.table(TABLE_NAME).insert(stored_data).execute()
 
                 if response.data:
-                    return f"Inserted {len(response.data)} polygons successfully.", True
+                    logger.info(f"Inserted {len(response.data)} polygons successfully.")
+                    return f"Inserted {len(response.data)} polygons successfully.", "success", True
                 else:
-                    return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", True
+                    logger.error(f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}")
+                    return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", "danger", True
 
         except Exception as e:
-            logger.error(f"Error inserting polygons: {e}"), True
+            logger.error(f"Error inserting polygons: {e}"), "danger", True
     
     return app
