@@ -17,8 +17,6 @@ from shapely.geometry import Polygon
 from .layout import layout
 from auth.supabase_auth import get_supabase_client
 from db.db_utils import db_connect
-from supabase import Client
-import psycopg2
 from src.farmland_characteristics.utils.vi_timeseries import combined_timeseries
 from src.farmland_characteristics.utils.parse_contents import parse_contents
 from src.farmland_characteristics.utils.farm_stats import calculate_farm_stats
@@ -106,19 +104,19 @@ def init_dash2(server):
         NDVI-NDMI time-series plots will be generated.
 
         Args: (i) n_clicks - the click that initiates the callback
-            (ii) file_contents - the contents of the uploaded file
-            (iii) file_name - the name of the uploaded file
-            (iv) polygon_wkt - the polygon geometry in wkt notation
-                if geometry entered through `upload` button
-            (v) is_valid - geometry validation (from previous callback)
+              (ii) file_contents - the contents of the uploaded file
+              (iii) file_name - the name of the uploaded file
+              (iv) polygon_wkt - the polygon geometry in wkt notation
+                                 if geometry entered through `upload` button
+               (v) is_valid - geometry validation (from previous callback)
 
         Returns: (i) Figure - NDVI time-series plot
-                (ii) Figure - NDMI time-series plot
-                (iii) dict - farmland stats in json
-                (iv) dict - ISDA soil data in json
+                 (ii) Figure - NDMI time-series plot
+                 (iii) dict - farmland stats in json
+                 (iv) dict - ISDA soil data in json
         """
         trigger = ctx.triggered_id
-        
+ 
         """
         The inputs are checked on whether they we submitted through the
         box or uploaded as a file. Regardless of choice, the `combined_timeseries()`
@@ -126,7 +124,7 @@ def init_dash2(server):
         """
         if trigger == "upload_button":
             if not is_valid:
-                PreventUpdate
+                raise PreventUpdate
             df_RoI = pd.DataFrame({
                 "uuid": [str(uuid4())],
                 "region": [None],
@@ -289,41 +287,65 @@ def init_dash2(server):
     that will eventually update the other tables that appear in `farmland_statistics`
     dashboard.
     """
-    # @app.callback(
-    #     Input("insert_button", "n_clicks"),
-    #     State("token_store", "data"), 
-    #     State("isda_soil_data", "data"),
-    #     prevent_initial_call=True
-    # )
-    # def insert_soildata(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, bool]:
-    #     """
-    #     This function INSERTs the iSDA soil data to the `soildata` table in
-    #     the Supabase database.
+    @app.callback(
+        Output("insert_notification", "children"),
+        Input("insert_button", "n_clicks"),
+        State("token_store", "data"), 
+        State("isda_soil_data", "data"),
+        prevent_initial_call=True
+    )
+    def insert_soildata(n_clicks: int, token: str, stored_data: dict[str, Any]) -> str:
+        """
+        This function INSERTs the iSDA soil data to the `soildata` table in
+        the Supabase database.
 
-    #     Args: (i) n_clicks - triggered by mouse click
-    #         (ii) token - login access token
-    #         (iii) stored_data - selected polygons
+        Args: (i) n_clicks - triggered by mouse click
+            (ii) token - login access token
+            (iii) stored_data - selected polygons
 
-    #     Returns: Status message of the insert operation
-    #     """
-    #     TABLE_NAME = "soildata"
+        Returns: Status message of the insert operation
+        """
+        TABLE_NAME = "soildata"
 
-    #     try:
-    #         client = get_supabase_client()
+        try:
+            if USE_LOCAL_DB:
+                conn = db_connect()
+                with conn.cursor() as cursor:
+                    dataset = stored_data[f"df_{TABLE_NAME}"]
 
-    #         # Add timestamp 
-    #         for item in stored_data:
-    #             item["created_at"] = datetime.now().isoformat()
+                    logging.info(f"Processing {TABLE_NAME}: {type(dataset)} -> {dataset[:2] if dataset else 'Empty'}")
 
-    #         response = client.table(TABLE_NAME).insert(stored_data).execute()
+                    if not isinstance(dataset[0], dict):
+                        raise TypeError(f"Expected list of dicts for {TABLE_NAME}, got {type(dataset[0])}")
 
-    #         if response.data:
-    #             return f"Inserted {len(response.data)} polygons successfully.", True
-    #         else:
-    #             return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", True
+                    for row in dataset:
+                        # Add a timestamp
+                        row.setdefault("created_at", datetime.now().isoformat())
 
-    #     except Exception as e:
-    #         logger.error(f"Error inserting polygons: {e}"), True
+                        columns = ', '.join(row.keys())
+                        placeholders = ', '.join(['%s'] * len(row))
+                        values = tuple(row.values())
+
+                        query = f"INSERT INTO {TABLE_NAME} ({columns}) VALUES ({placeholders})"
+                        cursor.execute(query, values)
+
+                return f"✅ {TABLE_NAME}: Inserted {len(dataset)} rows (Local DB)."                    
+            else:
+                client = get_supabase_client()
+
+                # Add timestamp 
+                for item in stored_data:
+                    item["created_at"] = datetime.now().isoformat()
+
+                response = client.table(TABLE_NAME).insert(stored_data).execute()
+
+                if response.data:
+                    return f"Inserted {len(response.data)} polygons successfully."
+                else:
+                    return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}"
+
+        except Exception as e:
+            logger.error(f"Error inserting polygons: {e}")
 
     @app.callback(
         Output("insert_notification", "children"),
@@ -332,10 +354,18 @@ def init_dash2(server):
         State("farm_stats", "data"),
         prevent_initial_call=True
     )
-    def insert_all_farm_stats(n_clicks: int, token: str, stored_data: dict[str, Any]) -> str:
+    def insert_all_farm_stats(n_clicks: int, token: str, stored_data: list[dict[str, Any]]) -> str:
         """
         This function performs an INSERT of all the farm stat tables stored in
-        the `farm_stats` dcc.Store.
+        the `farm_stats` dcc.Store. Depending on `USE_LOCAL_DB` it will either
+        INSERT the data to a local PostgreSQL database or Supabase (the former is)
+        for testing purposes.
+        
+        Args: (i) n_clicks - triggered by mouse click
+              (ii) token - login access token 
+              (iii) stored_data - list of datatables stored in dcc.Store
+
+        Returns: Status message of the insert operation
         """
 
         # List of data tables stored in dcc.Store
@@ -347,7 +377,9 @@ def init_dash2(server):
 
             if USE_LOCAL_DB:
                 conn = db_connect()
-                # Local PostgreSQL mode
+
+                # ====== Local PostgreSQL mode ====== #
+
                 with conn.cursor() as cursor:
                     for TABLE in TABLES:
                         dataset = stored_data[f"df_{TABLE}"]
@@ -377,7 +409,9 @@ def init_dash2(server):
 
             else:
                 client = get_supabase_client()
-                # Supabase mode
+
+                # ====== Supabase mode ====== #
+
                 for TABLE in TABLES:
                     dataset = stored_data[f"df_{TABLE}"] # data corresponding to particular table
                     if dataset:
