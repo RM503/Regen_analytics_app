@@ -1,55 +1,42 @@
-CREATE OR REPLACE FUNCTION update_ndvi_peaks_annual()
+CREATE OR REPLACE FUNCTION update_ndvi_peaks_monthly()
 RETURNS TRIGGER AS $$
 DECLARE
     affected_region TEXT;
-    affected_year INT;
 BEGIN
-    -- Determine affected region/year from inserted/updated/deleted row
+    -- Determine affected region from inserted/updated/deleted row
     IF (TG_OP = 'DELETE') THEN
         affected_region := OLD.region;
-        affected_year   := EXTRACT(YEAR FROM OLD.ndvi_peak_date);
     ELSE
         affected_region := NEW.region;
-        affected_year   := EXTRACT(YEAR FROM NEW.ndvi_peak_date);
     END IF;
 
-    -- Recalculate for the affected region-year
+    -- Aggregate monthly peaks for the affected region
     WITH agg AS (
         SELECT
             region,
+            TO_CHAR(ndvi_peak_date, 'Mon') AS ndvi_peak_month,
             EXTRACT(YEAR FROM ndvi_peak_date)::INT AS ndvi_peak_year,
-            COUNT(*) AS number_of_peaks_per_farm
+            COUNT(uuid) AS ndvi_peaks_per_month
         FROM ndvipeaksperfarm
         WHERE region = affected_region
-          AND EXTRACT(YEAR FROM ndvi_peak_date) = affected_year
-        GROUP BY uuid, region, EXTRACT(YEAR FROM ndvi_peak_date)
-    ),
-    final_agg AS (
-        SELECT
-            ndvi_peak_year,
-            region,
-            number_of_peaks_per_farm,
-            COUNT(*) AS uuid_count
-        FROM agg
-        GROUP BY ndvi_peak_year, region, number_of_peaks_per_farm
+        GROUP BY region, TO_CHAR(ndvi_peak_date, 'Mon'), EXTRACT(MONTH FROM ndvi_peak_date), EXTRACT(YEAR FROM ndvi_peak_date)
     )
-    -- Upsert results into summary table
-    INSERT INTO ndvipeaksperfarm_summary (region, ndvi_peak_year, number_of_peaks_per_farm, uuid_count)
-    SELECT region, ndvi_peak_year, number_of_peaks_per_farm, uuid_count
-    FROM final_agg
-    ON CONFLICT (region, ndvi_peak_year, number_of_peaks_per_farm)
-    DO UPDATE
-      SET uuid_count = EXCLUDED.uuid_count;
+    -- Upsert results into the monthly summary table
+    INSERT INTO ndvipeaksmonthly(region, ndvi_peak_month, ndvi_peak_year, ndvi_peaks_per_month)
+    SELECT region, ndvi_peak_month, ndvi_peak_year, ndvi_peaks_per_month
+    FROM agg
+    ON CONFLICT (region, ndvi_peak_month, ndvi_peak_year)
+    DO UPDATE SET ndvi_peaks_per_month = EXCLUDED.ndvi_peaks_per_month;
 
-    -- Remove any rows for this region/year no longer present
-    DELETE FROM ndvipeaksperfarm_summary s
+    -- Optional: remove rows in the summary table that no longer exist in the source table
+    DELETE FROM ndvipeaksmonthly s
     WHERE s.region = affected_region
-      AND s.ndvi_peak_year = affected_year
       AND NOT EXISTS (
-          SELECT 1 FROM final_agg f
+          SELECT 1
+          FROM ndvipeaksperfarm f
           WHERE f.region = s.region
-            AND f.ndvi_peak_year = s.ndvi_peak_year
-            AND f.number_of_peaks_per_farm = s.number_of_peaks_per_farm
+            AND TO_CHAR(f.ndvi_peak_date, 'Mon') = s.ndvi_peak_month
+            AND EXTRACT(YEAR FROM f.ndvi_peak_date)::INT = s.ndvi_peak_year
       );
 
     RETURN NULL;
