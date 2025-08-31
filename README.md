@@ -75,4 +75,4 @@ At the moment, the app is mostly meant for querying farm polygons, extracting in
 
 ## Contact
 
-For questions or suggestions regarding the app, please contact rmahbub503@proton.me.
+For questions or suggestions regarding the app, please contact rmahbub503@gmail.com or waughsh@gmail.com.
