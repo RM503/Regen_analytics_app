@@ -143,22 +143,22 @@ async def main(df: pd.DataFrame) -> pd.DataFrame:
 
     # Rename columns with appropriate units
     cols_to_rename = {
-        "bulk_density": "bulk density (g/cm^3)",
-        "calcium_extractable": "calcium extractable (ppm)",
-        "carbon_organic": "carbon organic (g/kg)",
-        "carbon_total": "carbon total (g/kg)",
-        "clay_content": "clay content (%)",
+        "bulk_density": "bulk_density (g/cm^3)",
+        "calcium_extractable": "calcium_extractable (ppm)",
+        "carbon_organic": "carbon_organic (g/kg)",
+        "carbon_total": "carbon_total (g/kg)",
+        "clay_content": "clay_content (%)",
         "iron_extractable": "iron_extractable (ppm)",
         "magnesium_extractable": "magnesium_extractable (ppm)",
-        "nitrogen_total": "nitrogen total (g/ kg)",
+        "nitrogen_total": "nitrogen_total (g/ kg)",
         "ph": "ph",
         "phosphorous_extractable": "phosphorous_extractable (ppm)",
         "potassium_extractable": "potassium_extractable (ppm)",
-        "sand_content": "sand content (%)",
-        "silt_content": "silt content (%)",
-        "stone_content": "stone content (%)",
+        "sand_content": "sand_content (%)",
+        "silt_content": "silt_content (%)",
+        "stone_content": "stone_content (%)",
         "sulphur_extractable": "sulphur_extractable (ppm)",
-        "texture_class": "texture class",
+        "texture_class": "texture_class",
         "zinc_extractable": "zinc_extractable (ppm)"
     }
     df_results.rename(columns=cols_to_rename, inplace=True)

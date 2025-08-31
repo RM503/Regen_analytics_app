@@ -75,7 +75,7 @@ layout = dbc.Container([
             ),
             dbc.Button("Submit", id="upload_button", n_clicks=0),
             html.Br(),
-            dbc.Alert(color="danger", is_open=False, id="invalid_geometry_alert"),
+            dbc.Alert(color="danger", is_open=False, id="invalid_geometry_alert", duration=5000),
             html.Br(),
             html.P("or upload csv file (beware of cluttering)"),
             dcc.Upload(
@@ -135,6 +135,8 @@ layout = dbc.Container([
     html.Br(),
     dcc.Interval(id="token_interval", interval=500, max_intervals=1),
     dcc.Store(id="token_store", storage_type="session"),
-    dbc.Button("INSERT", id="insert_button", disabled=True),
-    dbc.Alert(id="insert_notification", is_open=False, color="success")
+    dbc.Button("INSERT soil data", id="insert_soil_data", disabled=True, className="me-2"),
+    dbc.Alert(id="insert_soil_data_notification", is_open=False, duration=5000),
+    dbc.Button("INSERT farm stats", id="insert_farm_stats", disabled=True),
+    dbc.Alert(id="insert_farm_stats_notification", is_open=False, duration=5000)
 ])
