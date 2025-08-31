@@ -90,9 +90,9 @@ layout = dbc.Container([
                 dbc.Button("INSERT", id="insert_button", disabled=True),
                 dcc.Store(id="polygons_store"), # Stores data on selected polygons
             ], style={"display": "flex", "gap": "10px"}),
-            dbc.Alert(id="polygon_count_alert", is_open=False, color="warning"),
-            dbc.Alert(id="area_limit_alert", is_open=False, color="danger"),
-            dbc.Alert(id="insert_notification", is_open=False, className="mb-2")
+            dbc.Alert(id="polygon_count_alert", is_open=False, color="warning", duration=5000),
+            dbc.Alert(id="area_limit_alert", is_open=False, color="danger", duration=5000),
+            dbc.Alert(id="insert_notification", is_open=False, className="mb-2", duration=5000)
         ], xs=6)
     ])
 ], fluid=True)

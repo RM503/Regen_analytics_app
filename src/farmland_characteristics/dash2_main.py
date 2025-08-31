@@ -1,5 +1,6 @@
 # Dash app with callbacks for `Farmland Characteristics` page
 from datetime import datetime
+import re
 from typing import Any, Optional
 from uuid import uuid4
 import asyncio
@@ -231,7 +232,7 @@ def init_dash2(server):
         Input("isda_soil_data", "data"),
         prevent_initial_call=True
     )
-    def display_soil_data(df_soil: dict[str, Any]):
+    def display_soil_data(df_soildata: dict[str, Any]):
         """
         This function displays the isDA soil data
         as a Dash data table.
@@ -240,18 +241,19 @@ def init_dash2(server):
 
         Returns: iSDA soil Dash data table
         """
-        if not df_soil:
+        if not df_soildata:
             dbc.Alert("Soil data failed to be retrieved", color="danger")
         
         return dash_table.DataTable(
-            data=df_soil,
-            columns=[{"name": col, "id": col} for col in df_soil[0].keys()],
+            data=df_soildata,
+            columns=[{"name": col, "id": col} for col in df_soildata[0].keys()],
             page_size=10,
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'left'},
             style_header={'backgroundColor': '#111', 'color': 'white'},
             style_data={'backgroundColor': '#222', 'color': 'white'},
         )
+
     @app.callback(
         Output("token_store", "data"),
         Input("token_interval", "n_intervals")
@@ -263,22 +265,16 @@ def init_dash2(server):
         return token
 
     @app.callback(
-        Output("insert_button", "disabled"),
+        Output("insert_soil_data", "disabled"),
+        Output("insert_farm_stats", "disabled"),
         Input("token_store", "data"),
         Input("farm_stats", "data"),
         Input("isda_soil_data", "data")
     )
-    def enable_insert_button(
-        token: str,
-        farm_stats: dict[str, Any], 
-        isda_soil_data: dict[str, Any]
-    ) -> bool:
-
-        if not token:
-            return True
-        if not farm_stats or not isda_soil_data:
-            return True
-        return False
+    def enable_insert_button(token, farm_stats, isda_soil_data):
+        soil_disabled = not token or not isda_soil_data
+        farm_disabled = not token or not farm_stats
+        return soil_disabled, farm_disabled
     
     # ========== Data INSERTs ==========
     """
@@ -287,14 +283,20 @@ def init_dash2(server):
     that will eventually update the other tables that appear in `farmland_statistics`
     dashboard.
     """
+    def clean_column_name(name: str) -> str:
+        # This function removes units from soil quantities for INSERT.
+        return re.sub(r"\s*\([^)]*\)", "", name).strip().replace(" ", "_").lower()
+
     @app.callback(
-        Output("insert_notification", "children"),
-        Input("insert_button", "n_clicks"),
+        Output("insert_soil_data_notification", "children"),
+        Output("insert_soil_data_notification", "color"),
+        Output("insert_soil_data_notification", "is_open"),
+        Input("insert_soil_data", "n_clicks"),
         State("token_store", "data"), 
         State("isda_soil_data", "data"),
         prevent_initial_call=True
     )
-    def insert_soildata(n_clicks: int, token: str, stored_data: dict[str, Any]) -> str:
+    def insert_soildata(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, str, bool]:
         """
         This function INSERTs the iSDA soil data to the `soildata` table in
         the Supabase database.
@@ -306,12 +308,26 @@ def init_dash2(server):
         Returns: Status message of the insert operation
         """
         TABLE_NAME = "soildata"
+        texture_class_to_int = {
+            "Sand": 1,
+            "Loamy Sand": 2,
+            "Sandy Loam": 3,
+            "Loam": 4,
+            "Silt Loam": 5,
+            "Silt": 6,
+            "Sandy Clay Loam": 7,
+            "Clay Loam": 8,
+            "Silty Clay Loam": 9,
+            "Sandy Clay": 10,
+            "Silty Clay": 11,
+            "Clay": 12
+        }
 
         try:
             if USE_LOCAL_DB:
                 conn = db_connect()
                 with conn.cursor() as cursor:
-                    dataset = stored_data[f"df_{TABLE_NAME}"]
+                    dataset = stored_data
 
                     logging.info(f"Processing {TABLE_NAME}: {type(dataset)} -> {dataset[:2] if dataset else 'Empty'}")
 
@@ -320,7 +336,14 @@ def init_dash2(server):
 
                     for row in dataset:
                         # Add a timestamp
+                        row = {clean_column_name(k): v for k, v in row.items()} # Remove units from column names
                         row.setdefault("created_at", datetime.now().isoformat())
+
+                        if not isinstance(row["texture_class"], int):
+                            # Check if texture class is a string or integer
+                            # DB stores it as integer
+                            texture_class = row["texture_class"]
+                            row["texture_class"] = texture_class_to_int[texture_class]
 
                         columns = ', '.join(row.keys())
                         placeholders = ', '.join(['%s'] * len(row))
@@ -329,7 +352,7 @@ def init_dash2(server):
                         query = f"INSERT INTO {TABLE_NAME} ({columns}) VALUES ({placeholders})"
                         cursor.execute(query, values)
 
-                return f"✅ {TABLE_NAME}: Inserted {len(dataset)} rows (Local DB)."                    
+                return f"✅ {TABLE_NAME}: Inserted {len(dataset)} rows (Local DB).", "success", True                    
             else:
                 client = get_supabase_client()
 
@@ -340,21 +363,24 @@ def init_dash2(server):
                 response = client.table(TABLE_NAME).insert(stored_data).execute()
 
                 if response.data:
-                    return f"Inserted {len(response.data)} polygons successfully."
+                    return f"Inserted {len(response.data)} polygons successfully.", "success", True
                 else:
-                    return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}"
+                    return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", "danger", True
 
         except Exception as e:
             logger.error(f"Error inserting polygons: {e}")
+            return f"❌ Insert failed: {e}", "danger", True
 
     @app.callback(
-        Output("insert_notification", "children"),
-        Input("insert_button", "n_clicks"),
+        Output("insert_farm_stats_notification", "children"),
+        Output("insert_farm_stats_notification", "color"),
+        Output("insert_farm_stats_notification", "is_open"),
+        Input("insert_farm_stats", "n_clicks"),
         State("token_store", "data"), 
         State("farm_stats", "data"),
         prevent_initial_call=True
     )
-    def insert_all_farm_stats(n_clicks: int, token: str, stored_data: list[dict[str, Any]]) -> str:
+    def insert_all_farm_stats(n_clicks: int, token: str, stored_data: list[dict[str, Any]]) -> tuple[str, str, bool]:
         """
         This function performs an INSERT of all the farm stat tables stored in
         the `farm_stats` dcc.Store. Depending on `USE_LOCAL_DB` it will either
@@ -405,7 +431,7 @@ def init_dash2(server):
 
                         messages.append(f"✅ {TABLE}: Inserted {len(dataset)} rows (Local DB).")
             
-                return " | ".join(messages)
+                return " | ".join(messages), "success", True
 
             else:
                 client = get_supabase_client()
@@ -427,10 +453,13 @@ def init_dash2(server):
                                 f"❌ {TABLE}: Insert failed ({getattr(response, 'error', 'Unknown error')})."
                             )
 
-                return " | ".join(messages) if messages else "⚠️ No data to insert."
+                if messages:
+                    return " | ".join(messages), "success", True 
+                else:
+                    return "⚠️ No data to insert.", "warning", True
 
         except Exception as e:
             logger.error(f"Insert error: {e}")
-            return f"❌ Error inserting data: {e}"
+            return f"❌ Error inserting data: {e}", "danger", True
 
     return app
