@@ -19,6 +19,7 @@ logs/
 config/
 
 src/initial_market_data/plots_json
+src/farmland_characteristics/dash2_test.py
 src/farmland_characteristics/test_data
 
 db/data
@@ -27,3 +28,5 @@ docs/*
 !docs/user_guide.pdf
 
 credentials.json
+
+config.py
