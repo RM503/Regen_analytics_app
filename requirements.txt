@@ -7,6 +7,7 @@ earthengine-api>=1.5.22
 geemap>=0.35.3
 geoalchemy2>=0.17.1
 geopandas>=1.1.1
+gotrue>=2.12.4
 gunicorn>=23.0.0
 ipython>=9.4.0
 jinja2>=3.1.6
