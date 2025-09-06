@@ -1,11 +1,13 @@
-![Static Badge](https://img.shields.io/badge/alpha_version-1.0.0-blue)
+![Static Badge](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/github/license/RM503/Regen_analytics_app)
+
 
 # Regen Organics analytics app
 ## What is this app for?
 This is an analytics app designed by [DataKind](https://www.datakind.org/) for [Regen Organics](https://www.regenorganics.co/), serving two primary purposes:
 
 * Generate key statistics related to planting cycles and crop growth using vegetation indices (NDVI and NDMI) with the help of Google Earth Engine (GEE) backend
-* Serve as an analytics dashboard containing data and visualizations from initial market data, pre-existing analyses and trained models. The app includes functionalities for inserting newly queried farm polygons for analyses.
+* Serve as an analytics dashboard containing data and visualizations from initial market data, pre-existing analyses and trained models. The app also includes functionalities for inserting newly queried farm polygons for analyses (only for authenticated users).
 
 The design and functionality of this app relies heavily on the workflow carried out during the research phases of the project - which includes data generation, visualization, ETL and ML model training. The codebase can be accessed through the following link:
 
@@ -22,11 +24,7 @@ The complete list of libraries required for running the app can be found in the 
 git clone https://github.com/RM503/Regen_analytics_app.git
 ```
 
-```
-docker pull rmahbub503/regen_app:v1
-```
-
-Use the Docker file to first build the app
+The Docker file is to first build the app
 
 ```
 docker build -t <whatever_name_you_want:version> .
@@ -38,7 +36,7 @@ and run
 docker run --env-file .env.docker -p 8000:8000 <whatever_name_you_want:version>>
 ```
 
-In the run command, we explicitly inject the environment variables through a `.env.docker` file. A simpler method is to user the `docker-compose.yaml` file using the following command
+In the run command, the environment variables are explicitly injected using the `.env.docker` file. A simpler method is to user the `docker-compose.yaml` file using the following command
 
 ```
 docker compose up
@@ -48,7 +46,7 @@ docker compose up
 
 * Google Earth Engine (GEE) Python API for calculating NDVI-NDMI curves from queried polygons
 * iSDA API for extracting soil quantities for queried polygons
-* Supabase for retrieving pre-existing data and storing newly queried polygons
+* Supabase for `SELECT` and `INSERT` operations pre-existing and storing newly queried data
 
 These services have their own API keys and URLs, which need to be provided for the app to work. The following is a skeleton for what the `.env` file should look like
 
@@ -72,6 +70,16 @@ The app is divided into multiple dashboards, each serving different purposes. Th
 * **Farmland Characteristics:** The user(s) can use the polygons generated in the previous dashboard to obtain NDVI-NDMI time series curves. These indices are extremely important for assessing crop/vegetation health and moisture levels. Furthermore, this dashboard also yields tabulated data that returns information on peak crop growing seasons, number of planting cycles, moisture level and important soil characteristics.
 
 * **Farmland Statistics:** This dashboard contains analyses results obtained from the research phase of the project, containing region-aggregated statistics on various metrics that have been deemed important for the project. Importantly, this dashboard can be used as a means of comparing farmland performance of various distributor locations.
+
+As noted earlier, `INSERT` operations can only be performed by authenticated users. Currently, `UPDATE` and `DELETE` operations can only be performed by users with administrative access to Supabase.
+
+## How to contribute
+
+If you are interested in contributing to the app to extend/improve its design, functionality or scope, please do the following:
+
+* Fork the repository
+* Create a branch (`git checkout -b feature-name`)
+* Make your changes and submit a pull request
 
 ## Contact
 
