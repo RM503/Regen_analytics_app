@@ -1,12 +1,12 @@
 # Supabase Python SDK scripts for authentication
+import logging
+import os
 
-import os 
 import dotenv
-from pydantic import BaseModel, EmailStr, ValidationError
 from flask import session
-from supabase import Client, create_client
 from gotrue.types import AuthResponse
-import logging 
+from pydantic import BaseModel, EmailStr, ValidationError
+from supabase import Client, create_client
 
 logging.basicConfig(level=logging.INFO)
 
@@ -15,7 +15,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 class SupabaseCredentials(BaseModel):
-    email: EmailStr # Must be an email string 
+    email: EmailStr # Must be an email string
     password: str
 
 def supabase_auth(
@@ -31,7 +31,7 @@ def supabase_auth(
     Args: (i) supabase_auth_email: user's email
           (ii) supabase_auth_password: user's password
           (iii) client: Supabase client
-    
+
     Returns: AuthResponse or None
     """
     try:
@@ -60,17 +60,17 @@ def supabase_auth(
         logging.error(f"Error signing in user: {e}")
 
         return None
-    
+
 def get_supabase_client() -> Client | None:
     """
-    Create Supabase client with authentication token. 
+    Create Supabase client with authentication token.
     The client will only be invoked for performing `INSERT`
-    operations from authenticated users. This also allows to 
+    operations from authenticated users. This also allows to
     test PostgreSQL operations on a local database.
     """
     token = session.get("access_token")
 
- 
+
     # If not using local database
     if not token:
         logging.warning("No access token found in session.")

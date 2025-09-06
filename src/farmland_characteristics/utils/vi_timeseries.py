@@ -1,15 +1,16 @@
 # Obtains NDVI and NDMI time-series from queried polygons
+import logging
 import os 
-import dotenv
 from uuid import uuid4
+
+import dotenv
 import ee
 import numpy as np
 import pandas as pd
 from shapely import wkt
 from shapely.geometry import shape
-from .preprocessing import clean_vi_series
 
-import logging 
+from .preprocessing import clean_vi_series
 
 logger = logging.getLogger(__name__)
 

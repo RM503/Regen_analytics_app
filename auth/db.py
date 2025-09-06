@@ -1,10 +1,11 @@
 # Script for creating a direct connection to database for `SELECT` commands
 
-import os 
-import dotenv 
-from sqlalchemy import create_engine
-from sqlalchemy.exc import OperationalError 
 import logging
+import os
+
+import dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ if not DB_URL:
 
 try:
     engine = create_engine(DB_URL, echo=False)
-    logger.info("SQLAlchemy engine craeted successfully.")
+    logger.info("SQLAlchemy engine created successfully.")
 except OperationalError as e:
     logger.warning(f"SQLAlchemy connection failed: {e}")
     engine = None

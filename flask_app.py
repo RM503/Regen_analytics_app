@@ -1,5 +1,7 @@
-# Flask backend test (check if access token can be passed to dash apps)
+# Flask backend 
+import logging
 import os 
+
 import dotenv
 from flask import (
     Flask, 
@@ -10,19 +12,19 @@ from flask import (
     session, 
     url_for
 ) 
-from werkzeug.wrappers import Response
 from supabase import create_client
+from werkzeug.wrappers import Response
+
 from auth.supabase_auth import supabase_auth
 from src.initial_market_data.dash0_main import init_dash0
 from src.polygon_generator.dash1_main import init_dash1
 from src.farmland_characteristics.dash2_main import init_dash2
 from src.farmland_statistics.dash3_main import init_dash3
-import logging 
+
 from logging_config import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
-
 
 # Load environment variables
 dotenv.load_dotenv(override=True)
@@ -73,10 +75,6 @@ def logout() -> Response:
     session["login_success"] = "You have been logged out!"
 
     return redirect(url_for("root"))
-
-# @app.route("/get_session_token", methods=["GET"])
-# def get_session_token() -> dict[str, str]:
-#     pass
     
 @app.route("/", methods=["GET"])
 def root():
@@ -94,6 +92,7 @@ def root():
         username=username
     )
 
+# Initialize Dash apps
 init_dash0(app)
 init_dash1(app)
 init_dash2(app)

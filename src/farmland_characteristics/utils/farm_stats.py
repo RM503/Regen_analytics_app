@@ -1,9 +1,11 @@
+import logging
 from typing import Any
+
 import numpy as np
 import pandas as pd
-from .ndvi_peaks import ndvi_peaks_per_farm
 from scipy.signal import savgol_filter, find_peaks
-import logging 
+
+from .ndvi_peaks import ndvi_peaks_per_farm
 
 logger = logging.getLogger(__name__)
 

@@ -1,16 +1,17 @@
 """
 Script for fetching ISDA soil data using async
 """
-import os
-from typing import Any
 import asyncio
-import aiohttp
+import os
+import logging
+from typing import Any
+
+import aiohttp 
 from aiohttp import ClientSession
 import dotenv
 import pandas as pd
 import geopandas as gpd
 from shapely.wkt import loads
-import logging 
 
 logging.getLogger(__name__)
 

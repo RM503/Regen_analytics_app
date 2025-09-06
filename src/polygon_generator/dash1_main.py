@@ -1,27 +1,29 @@
-# Dashboard 1 main file (callbacks and etc.)
+# Dashboard app with callbacks for `Polygon Generator` page
 from datetime import datetime
-from uuid import uuid4
-from typing import Any
 import json
-import dotenv
+import logging
+from typing import Any
+from uuid import uuid4
+
 import dash
 from dash import Dash, dash_table, dcc, Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
+import dotenv
+from flask import Flask
 from flask import session
-from auth.supabase_auth import get_supabase_client
-from auth.db import engine
-from db.db_utils import db_connect
-from sqlalchemy import text
 import pandas as pd
 import geopandas as gpd
+from pyproj import Transformer
 from shapely.geometry import shape
 from shapely.ops import transform
-from pyproj import Transformer
-from .layout import layout
-from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
+from sqlalchemy import text
 
-import logging 
+from auth.db import engine
+from auth.supabase_auth import get_supabase_client
+from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
+from db.db_utils import db_connect
+from .layout import layout
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,7 @@ if USE_LOCAL_DB:
 else:
     logging.info("Running in SUPABASE mode.")
 
-def init_dash1(server):
+def init_dash1(server: Flask) -> Dash:
     app = Dash(
         __name__,
         server=server,

@@ -1,10 +1,11 @@
 # Layout for `Farmland Characteristics` page
 
 from datetime import datetime
+import logging 
+
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
-import logging 
 
 logger = logging.getLogger(__name__)
 

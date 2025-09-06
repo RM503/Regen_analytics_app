@@ -1,17 +1,17 @@
 ![Static Badge](https://img.shields.io/badge/alpha_version-1.0.0-blue)
 
-# Regen Organics app
+# Regen Organics analytics app
 ## What is this app for?
-This is an analytics app designed by DataKind for Regen Organics, serving two primary purposes:
+This is an analytics app designed by [DataKind](https://www.datakind.org/) for [Regen Organics](https://www.regenorganics.co/), serving two primary purposes:
 
 * Generate key statistics related to planting cycles and crop growth using vegetation indices (NDVI and NDMI) with the help of Google Earth Engine (GEE) backend
-* Serve as an analytics dashboard containing data and visualizations from initial market data, pre-existing analyses and trained models. Future upades will include write functionalities of newly aquired data to the database.
+* Serve as an analytics dashboard containing data and visualizations from initial market data, pre-existing analyses and trained models. The app includes functionalities for inserting newly queried farm polygons for analyses.
 
-The design and functionality of this app relies heavily on the workflow carried out during the research phases of the project - which includes data generation, visualization, ETL and ML model training. The codebase can be accessed through the following link
+The design and functionality of this app relies heavily on the workflow carried out during the research phases of the project - which includes data generation, visualization, ETL and ML model training. The codebase can be accessed through the following link:
 
 https://github.com/RM503/DataKind_Geospatial/
 
-Even though the app was designed for a particular organization, it can be adapted to needs of other users.
+Even though the app was designed for a particular organization, it can be adapted to the needs of other users. Details on API requirements are provided later in this document.
 
 ## Building and running the app
 
@@ -48,7 +48,7 @@ docker compose up
 
 * Google Earth Engine (GEE) Python API for calculating NDVI-NDMI curves from queried polygons
 * iSDA API for extracting soil quantities for queried polygons
-* Supabase for retrieving pre-existing data (write functionality has not been incorporated yet)
+* Supabase for retrieving pre-existing data and storing newly queried polygons
 
 These services have their own API keys and URLs, which need to be provided for the app to work. The following is a skeleton for what the `.env` file should look like
 
@@ -64,7 +64,7 @@ For a complete set of instructions on how to use the app, please check the `docs
 
 ## How to use this app?
 
-At the moment, the app is mostly meant for querying farm polygons, extracting information about and them. Write functionalities will be added in the future. The app is divided into multiple dashboards, each serving different purposes. This can be seen upon launching the app, taking the user to the landing page. The following contains detailed information regarding each dashboard:
+The app is divided into multiple dashboards, each serving different purposes. This can be seen upon launching the app, taking the user to the landing page. The following contains detailed information regarding each dashboard:
 * **Initial Market Data:** This dashboard contains exploratory data analysis using initial sales and leads data provided by Regen Organics. 
 
 * **Polygon Generator:** This dashboard contains an interactive tile map which the user can use to explore regions on interest in Kenya, identify farms (at least visually) and draw polygons around them. Once a polygon is drawn, information on it will be generated, which contain a unique identifier (uuid), area in acres and polygon geometry. Note, however, that the app will only allow a maximum of five polygons to be queried at a given time before refreshing.
@@ -75,4 +75,4 @@ At the moment, the app is mostly meant for querying farm polygons, extracting in
 
 ## Contact
 
-For questions or suggestions regarding the app, please contact rmahbub503@gmail.com or waughsh@gmail.com.
+For questions or suggestions regarding the app, please contact Rafid Mahbub (rmahbub503@gmail.com) or Sheldon Waugh (waughsh@gmail.com).

@@ -1,8 +1,9 @@
 # For parse file uploads
 import base64
 import io 
-import pandas as pd
+
 from dash import html
+import pandas as pd
 
 def parse_contents(contents: str, filename: str) -> pd.DataFrame:
     content_type, content_string = contents.split(",")

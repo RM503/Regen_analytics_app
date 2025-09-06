@@ -4,7 +4,7 @@ build/
 dist/
 wheels/
 *.egg-info
-
+.ropeproject
 
 .venv
 

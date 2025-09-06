@@ -2,14 +2,15 @@
 This script procecesses NDVI and NDMI data generated from the GEE web app that is then
 uploaded through the Streamlit interface. 
 """
+import logging
+
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
-from scipy.signal import savgol_filter
 import pandera.pandas as pa
 from pandera import DataFrameSchema, Column
+from scipy.signal import savgol_filter
 from sklearn.ensemble import IsolationForest
-import logging
 
 logger = logging.getLogger(__name__)
 

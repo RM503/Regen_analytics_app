@@ -1,13 +1,16 @@
+import logging
+
 from dash import Dash, Input, Output
 import dash_bootstrap_components as dbc
+from flask import Flask
 from plotly.graph_objects import Figure
 import plotly.io as pio
+
 from .layout import layout 
-import logging 
 
 logger = logging.getLogger(__name__)
 
-def init_dash0(server):
+def init_dash0(server: Flask) -> Dash:
     app = Dash(
         __name__, 
         server=server, 

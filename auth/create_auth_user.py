@@ -1,9 +1,10 @@
-import os 
-import secrets 
+import logging
+import secrets
 import string
+import os
+
 import dotenv
 from supabase import create_client
-import logging 
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,7 +25,7 @@ def generate_temp_password(length: int = 16) -> str:
     alphabet = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
     temp_password = "".join(secrets.choice(alphabet) for i in range(length))
 
-    return temp_password 
+    return temp_password
 
 def add_users(emails: list[str]) -> dict[str, str]:
     """
@@ -38,14 +39,14 @@ def add_users(emails: list[str]) -> dict[str, str]:
         try:
             _ = client.auth.admin.create_user(
                 {
-                    "email": email, 
+                    "email": email,
                     "password": temp_password,
                     "email_confirm": True
                 }
             )
 
             results[email] = temp_password
-            logging.info(f"✅ Created user {email}") 
+            logging.info(f"✅ Created user {email}")
         except Exception as e:
             results[email] = f"❌ Error: {str(e)}"
             logging.error(f"❌ Failed to create {email}: {e}")
@@ -57,6 +58,6 @@ if __name__ == "__main__":
     results = add_users(emails)
 
     logging.info("\nUser creation results:")
-    
+
     for email, password in results.items():
         logging.info(f"{email}: {password}")

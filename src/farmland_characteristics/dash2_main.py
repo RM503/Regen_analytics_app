@@ -1,30 +1,33 @@
 # Dash app with callbacks for `Farmland Characteristics` page
+import asyncio
 from datetime import datetime
+import logging
 import re
 from typing import Any, Optional
 from uuid import uuid4
-import asyncio
-import dotenv
-import numpy as np
-import pandas as pd
-from dash import Dash, Input, Output, State, ctx, dash_table 
+
+from aiohttp import ClientError
+from dash import Dash, Input, Output, State, ctx, dash_table
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
+import dotenv
+from flask import Flask
 from flask import session
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure
 import shapely
 from shapely.geometry import Polygon
-from .layout import layout
+
 from auth.supabase_auth import get_supabase_client
-from db.db_utils import db_connect
-from src.farmland_characteristics.utils.vi_timeseries import combined_timeseries
-from src.farmland_characteristics.utils.parse_contents import parse_contents
-from src.farmland_characteristics.utils.farm_stats import calculate_farm_stats
-from src.farmland_characteristics.utils.isda_soil_data import main as get_soil_data
-from aiohttp import ClientError
 from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
-import logging 
+from db.db_utils import db_connect
+from .layout import layout
+from .utils.vi_timeseries import combined_timeseries
+from .utils.parse_contents import parse_contents
+from .utils.farm_stats import calculate_farm_stats
+from .utils.isda_soil_data import main as get_soil_data
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +42,15 @@ if USE_LOCAL_DB:
 else:
     logging.info("Running in SUPABASE mode.")
 
-def init_dash2(server):
+def init_dash2(server: Flask) -> Dash:
     app = Dash(
-        __name__, 
+        __name__,
         server=server,
-        routes_pathname_prefix="/farmland_characteristics/", 
+        routes_pathname_prefix="/farmland_characteristics/",
         external_stylesheets=[dbc.themes.DARKLY]
     )
     app.title = "Farmland Characteristics"
-    app.layout = layout 
+    app.layout = layout
 
     @app.callback(
         Output("invalid_geometry_alert", "is_open"),
@@ -64,10 +67,10 @@ def init_dash2(server):
         but a POLYGON geometry (even MULTIPOLYGON geometries).
 
         Args: (i) n_clicks - the click that initiates the callback
-            (ii) polygon_wkt - the polygon geometry in wkt notation
+              (ii) polygon_wkt - the polygon geometry in wkt notation
 
         Returns: the return values depend on whether an improper polygon format has been
-                entered.  
+                entered.
         """
         try:
             geom = shapely.wkt.loads(polygon_wkt)
@@ -77,7 +80,7 @@ def init_dash2(server):
                 return False, "", True
             else:
                 return True, f"❌ Input is not a single POLYGON. Detected: {type(geom).__name__}", False
-        
+
         except Exception as e:
             return True, f"❌ Invalid WKT format: {str(e)}", False
 
@@ -94,10 +97,10 @@ def init_dash2(server):
         prevent_initial_call=True
     )
     def plot_vi_data(
-        n_clicks: int, 
-        file_contents: Optional[str], 
-        file_name: Optional[str], 
-        polygon_wkt: Optional[str], 
+        n_clicks: int,
+        file_contents: Optional[str],
+        file_name: Optional[str],
+        polygon_wkt: Optional[str],
         is_valid: bool
     ) -> tuple[Figure, Figure, dict[str, Any], dict[str, Any]]:
         """
@@ -117,7 +120,7 @@ def init_dash2(server):
                  (iv) dict - ISDA soil data in json
         """
         trigger = ctx.triggered_id
- 
+
         """
         The inputs are checked on whether they we submitted through the
         box or uploaded as a file. Regardless of choice, the `combined_timeseries()`
@@ -146,7 +149,7 @@ def init_dash2(server):
 
         fig_ndvi = go.Figure()
         fig_ndmi = go.Figure()
-        
+
         for idx, uuid in enumerate(uuid_list):
             df_uuid = df[df["uuid"] == uuid]
             label = uuid[0:8] # show only the first 8 characters of uuid on legend
@@ -182,7 +185,7 @@ def init_dash2(server):
             font=dict(color="white"),
             margin=dict(l=20, r=20, t=30, b=20)
         )
-        
+
         # Calculate farmland stats and retrieve iSDA soil data
         df_stats = calculate_farm_stats(df)
 
@@ -205,18 +208,18 @@ def init_dash2(server):
         as a Dash data table.
 
         Args: df_stats - the farmland statistics data json
-        
+
         Returns: farmland statistics Dash data table
         """
         if not farm_stats or "df_stats" not in farm_stats:
             # farm_stats is None, empty, or missing expected keys
             raise PreventUpdate
-        
+
         df_stats = farm_stats["df_stats"]
 
         if not df_stats:
-            raise PreventUpdate 
-        
+            raise PreventUpdate
+
         return dash_table.DataTable(
             data=df_stats,
             columns=[{"name": col, "id": col} for col in df_stats[0].keys()],
@@ -243,7 +246,7 @@ def init_dash2(server):
         """
         if not df_soildata:
             dbc.Alert("Soil data failed to be retrieved", color="danger")
-        
+
         return dash_table.DataTable(
             data=df_soildata,
             columns=[{"name": col, "id": col} for col in df_soildata[0].keys()],
@@ -275,7 +278,7 @@ def init_dash2(server):
         soil_disabled = not token or not isda_soil_data
         farm_disabled = not token or not farm_stats
         return soil_disabled, farm_disabled
-    
+
     # ========== Data INSERTs ==========
     """
     These are the tables that where data is directly inserted to when the INSERT
@@ -292,7 +295,7 @@ def init_dash2(server):
         Output("insert_soil_data_notification", "color"),
         Output("insert_soil_data_notification", "is_open"),
         Input("insert_soil_data", "n_clicks"),
-        State("token_store", "data"), 
+        State("token_store", "data"),
         State("isda_soil_data", "data"),
         prevent_initial_call=True
     )
@@ -321,10 +324,13 @@ def init_dash2(server):
             "Sandy Clay": 10,
             "Silty Clay": 11,
             "Clay": 12
-        }
+        } # USDA texture classification conversions
 
         try:
             if USE_LOCAL_DB:
+
+                # ====== Local PostgreSQL mode ====== #
+
                 conn = db_connect()
                 with conn.cursor() as cursor:
                     dataset = stored_data
@@ -352,15 +358,26 @@ def init_dash2(server):
                         query = f"INSERT INTO {TABLE_NAME} ({columns}) VALUES ({placeholders})"
                         cursor.execute(query, values)
 
-                return f"✅ {TABLE_NAME}: Inserted {len(dataset)} rows (Local DB).", "success", True                    
+                return f"✅ {TABLE_NAME}: Inserted {len(dataset)} rows (Local DB).", "success", True
             else:
+
+                # ====== Supabase mode ====== #
+
                 client = get_supabase_client()
 
-                # Add timestamp 
+                dataset = []
                 for item in stored_data:
-                    item["created_at"] = datetime.now().isoformat()
+                    # Clean keys
+                    cleaned_item = {clean_column_name(k): v for k, v in item.items()}
+                    cleaned_item.setdefault("created_at", datetime.now().isoformat())
 
-                response = client.table(TABLE_NAME).insert(stored_data).execute()
+                    if not isinstance(cleaned_item.get("texture_class"), int):
+                        texture_class = cleaned_item["texture_class"]
+                        cleaned_item["texture_class"] = texture_class_to_int[texture_class]
+
+                    dataset.append(cleaned_item)
+
+                response = client.table(TABLE_NAME).insert(dataset).execute()
 
                 if response.data:
                     return f"Inserted {len(response.data)} polygons successfully.", "success", True
@@ -376,7 +393,7 @@ def init_dash2(server):
         Output("insert_farm_stats_notification", "color"),
         Output("insert_farm_stats_notification", "is_open"),
         Input("insert_farm_stats", "n_clicks"),
-        State("token_store", "data"), 
+        State("token_store", "data"),
         State("farm_stats", "data"),
         prevent_initial_call=True
     )
@@ -386,9 +403,9 @@ def init_dash2(server):
         the `farm_stats` dcc.Store. Depending on `USE_LOCAL_DB` it will either
         INSERT the data to a local PostgreSQL database or Supabase (the former is)
         for testing purposes.
-        
+
         Args: (i) n_clicks - triggered by mouse click
-              (ii) token - login access token 
+              (ii) token - login access token
               (iii) stored_data - list of datatables stored in dcc.Store
 
         Returns: Status message of the insert operation
@@ -411,13 +428,13 @@ def init_dash2(server):
                         dataset = stored_data[f"df_{TABLE}"]
 
                         logging.info(f"Processing {TABLE}: {type(dataset)} -> {dataset[:2] if dataset else 'Empty'}")
-                        
+
                         if not dataset:
-                            continue 
+                            continue
 
                         if not isinstance(dataset[0], dict):
                             raise TypeError(f"Expected list of dicts for {TABLE}, got {type(dataset[0])}")
-                        
+
                         for row in dataset:
                             # Add a timestamp
                             row.setdefault("created_at", datetime.now().isoformat())
@@ -430,7 +447,7 @@ def init_dash2(server):
                             cursor.execute(query, values)
 
                         messages.append(f"✅ {TABLE}: Inserted {len(dataset)} rows (Local DB).")
-            
+
                 return " | ".join(messages), "success", True
 
             else:
@@ -454,7 +471,7 @@ def init_dash2(server):
                             )
 
                 if messages:
-                    return " | ".join(messages), "success", True 
+                    return " | ".join(messages), "success", True
                 else:
                     return "⚠️ No data to insert.", "warning", True
 
