@@ -272,9 +272,10 @@ def init_dash1(server: Flask) -> Dash:
         """
         TABLE_NAME = "farmpolygons"
         try:
-            conn = db_connect()
 
             if USE_LOCAL_DB:
+                conn = db_connect()
+                
                 with conn.cursor() as cursor:
                     for row in stored_data:
                         row.setdefault("created_at", datetime.now().isoformat())
