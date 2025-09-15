@@ -2,6 +2,15 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
+import geopandas as gpd 
+import json 
+
+# Import administrative boundaries shapefile and convert to geojson
+gdf = gpd.read_file("src/polygon_generator/shapefiles/ken_adm_iebc_20191031_shp/ken_admbnda_adm2_iebc_20191031.shp")
+if gdf.crs and gdf.crs.to_epsg() != 4326:
+    gdf = gdf.to_crs(epsg=4326)
+
+geometries = json.loads(gdf["geometry"].to_json())
 
 # Tile map layers (not Sentinel-2 rasters)
 esri_hybrid = dl.TileLayer(
@@ -14,6 +23,13 @@ esri_labels = dl.TileLayer(
     url="https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
     attribution="ESRI Labels",
     id="ESRI_Labels"
+)
+
+admin_boundaries = dl.GeoJSON(
+    data=geometries,
+    id="admin_boundaries",
+    zoomToBounds=True,  
+    options=dict(style=dict(weight=1.5, color="red", fillOpacity=0))
 )
 
 edit_control = dl.EditControl(
@@ -47,7 +63,7 @@ layout = dbc.Container([
             dl.Map(
                 id="map",
                 children=[
-                    esri_hybrid, esri_labels, dl.FeatureGroup([edit_control]), dl.LayerGroup(id="marker-layer"),
+                    esri_hybrid, esri_labels, admin_boundaries, dl.FeatureGroup([edit_control]), dl.LayerGroup(id="marker-layer"),
                     dl.GeoJSON(
                         id="vector-layer", 
                         zoomToBounds=True, 
@@ -64,24 +80,48 @@ layout = dbc.Container([
             ),
         ], xs=6),
         dbc.Col([
+            html.Div(
+                [
+                    html.Label("Latitude/Longitude box: ", style={"marginRight": "10px"}),
+                    dcc.Input(
+                        id="coordinate_input_box",
+                        type="text",
+                        placeholder="Enter latitude, longitude",
+                        n_submit=0,
+                        style={
+                            "width": "725px",
+                            "backgroundColor": "#222",   
+                            "color": "white",            
+                            "border": "1px solid #444",
+                        }
+                    )
+                ]
+            ),
             html.Div([
+                html.Label("Region dropdown"),
                 dcc.Dropdown(
                     options=list(location_w_coords.keys()),
                     value="Default",
                     id="location_dropdown",
                     style={
-                        "backgroundColor": "#222",   # background of the dropdown
-                        "color": "black",            # selected text color
+                        "backgroundColor": "#222",   
+                        "color": "black",            
                         "border": "1px solid #444",
                     },
                     clearable=True
                 )
             ]),
-            html.Pre(id="geojson-output", style={
-                "whiteSpace": "pre-wrap", "wordBreak": "break-word",
-                "height": "75vh", "overflow": "auto",
-                "border": "1px solid #ccc", "padding": "10px"
-            }),
+            html.Pre(
+                id="geojson-output", 
+                style={
+                    "whiteSpace": "pre-wrap", 
+                    "wordBreak": "break-word",
+                    "height": "500px", 
+                    "overflow": "auto",
+                    "border": "1px solid #ccc", 
+                    "padding": "10px"
+                }
+            ),
             html.Div([
                 dbc.Button("Download polygons", id="download_button", n_clicks=0, disabled=True),
                 dcc.Download(id="download_polygons"), 

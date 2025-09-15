@@ -53,13 +53,24 @@ def init_dash1(server: Flask) -> Dash:
     @app.callback(
         Output("map", "center"),
         Output("marker-layer", "children"),
-        Input("location_dropdown", "value")
+        Input("location_dropdown", "value"),
+        Input("coordinate_input_box", "n_submit"),
+        State("coordinate_input_box", "value")
     )
-    def toggle_map(location: str) -> tuple[list[float], list]:
+    def toggle_map(location: str, n_submit: int, coords: str) -> tuple[list[float], list]:
         """
         This function controls map toggle from the location drop-down menu.
         The `Default` location refers to the centroid coordinates of Kenya.
         """
+        if n_submit and coords:
+            try:
+                lat_str, lon_str = [x.strip() for x in coords.split(",")]
+                lat, lon = float(lat_str), float(lon_str)
+                marker = dl.Marker(position=[lat, lon], children=dl.Popup([f"{lat:.6f}, {lon:.6f}"]))
+                return [lat, lon], [marker]
+            except Exception as e:
+                logging.error(f"Error parsing coordinates: {e}")
+                pass
         location_w_coords = {
             "Default": [1.00, 38.00],
             "Kajiado_1": [-2.8072, 37.5271],
