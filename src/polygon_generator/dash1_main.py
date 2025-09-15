@@ -17,7 +17,6 @@ import geopandas as gpd
 from pyproj import Transformer
 from shapely.geometry import shape
 from shapely.ops import transform
-from shapely import wkt
 from sqlalchemy import text
 
 from auth.db import engine
