@@ -17,6 +17,7 @@ import geopandas as gpd
 from pyproj import Transformer
 from shapely.geometry import shape
 from shapely.ops import transform
+from shapely import wkt
 from sqlalchemy import text
 
 from auth.db import engine
@@ -24,6 +25,7 @@ from auth.supabase_auth import get_supabase_client
 from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
 from db.db_utils import db_connect
 from .layout import layout
+from .utils import generate_location_w_coords
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,7 @@ def init_dash1(server: Flask) -> Dash:
 
     app.title = "Polygon Generator"
     app.layout = layout
+
     # Callbacks
 
     @app.callback(
@@ -71,13 +74,8 @@ def init_dash1(server: Flask) -> Dash:
             except Exception as e:
                 logging.error(f"Error parsing coordinates: {e}")
                 pass
-        location_w_coords = {
-            "Default": [1.00, 38.00],
-            "Kajiado_1": [-2.8072, 37.5271],
-            "Kajiado_2": [-3.0318, 37.7068],
-            "Laikipia_1": [0.2580, 36.5353],
-            "Trans_Nzoia_1": [1.0199, 35.0211]
-        }
+
+        location_w_coords = generate_location_w_coords()
 
         coords = location_w_coords.get(location, [1.00, 38.00])
         marker = dl.Marker(position=coords, children=dl.Popup(location or "Default")) # Marker placed at toggled location
@@ -85,21 +83,42 @@ def init_dash1(server: Flask) -> Dash:
 
     @app.callback(
         Output("vector-layer", "data"),
+        Output("region_bboxes", "data"),
         Input("location_dropdown", "value")
     )   
-    def update_vector_layer(location: str) -> dict[str, Any]:
+    def update_vector_layer(location: str) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         This function updates location toggles to associated vector layers.
         """
+        # Define empty FeatureCollection when nothing is returned
+        empty_fc = {"type": "FeatureCollection", "features": []} 
+
+        with open("src/polygon_generator/region_bboxes.geojson", "r") as f:
+            bboxes = json.load(f)
+
+        bbox_feature = next(
+            (feat for feat in bboxes.get("features", [])
+            if feat.get("properties", {}).get("region") == location),
+            None,
+        )
+
+        if bbox_feature:
+            bbox_geojson = {"type": "FeatureCollection", "features": [bbox_feature]}
+        else:
+            bbox_geojson = empty_fc
+
         # The `Default` location has no associated vector layer
-        if location == "Default":
-            return {"type": "FeatureCollection", "features": []}
+        if not location or location == "Default":
+            return empty_fc, empty_fc
 
         query = text(
             "SELECT uuid, region, area, geometry FROM farmpolygons WHERE region = :region"
         )
         with engine.connect() as conn:
             gdf = gpd.read_postgis(query, conn, geom_col="geometry", params={"region": location})
+
+        if gdf.empty:
+            return empty_fc, bbox_geojson
 
         geojson_data = json.loads(gdf.to_json()) # Convert gdf to geojson
 
@@ -116,7 +135,8 @@ def init_dash1(server: Flask) -> Dash:
                 area_str = str(area)
 
             props["popup"] = f"uuid: {uuid}<br>Area: {area_str} acres"
-        return geojson_data
+
+        return geojson_data, bbox_geojson
         
     @app.callback(
         Output("geojson-output", "children"),

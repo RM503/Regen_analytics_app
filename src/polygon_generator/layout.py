@@ -3,7 +3,9 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 import geopandas as gpd 
-import json 
+import json
+
+from .utils import generate_location_w_coords
 
 # Import administrative boundaries shapefile and convert to geojson
 gdf = gpd.read_file("src/polygon_generator/shapefiles/ken_adm_iebc_20191031_shp/ken_admbnda_adm2_iebc_20191031.shp")
@@ -11,6 +13,9 @@ if gdf.crs and gdf.crs.to_epsg() != 4326:
     gdf = gdf.to_crs(epsg=4326)
 
 geometries = json.loads(gdf["geometry"].to_json())
+
+with open("src/polygon_generator/region_bboxes.geojson", "r") as f:
+    regions = json.load(f)
 
 # Tile map layers (not Sentinel-2 rasters)
 esri_hybrid = dl.TileLayer(
@@ -28,8 +33,14 @@ esri_labels = dl.TileLayer(
 admin_boundaries = dl.GeoJSON(
     data=geometries,
     id="admin_boundaries",
-    zoomToBounds=True,  
     options=dict(style=dict(weight=1.5, color="red", fillOpacity=0))
+)
+
+region_bboxes = dl.GeoJSON(
+    data=regions,
+    id="region_bboxes",
+    zoomToBounds=True,
+    options=dict(style=dict(weight=1.5, color="blue", fillOpacity=0))
 )
 
 edit_control = dl.EditControl(
@@ -38,13 +49,7 @@ edit_control = dl.EditControl(
 )
 
 # Distributor locations with coordinates go here
-location_w_coords = {
-        "Default": [1.00, 38.00],
-        "Kajiado_1": [-2.8072, 37.5271],
-        "Kajiado_2": [-3.0318, 37.7068],
-        "Laikipia_1": [0.2580, 36.5353],
-        "Trans_Nzoia_1": [1.0199, 35.0211]
-    }
+location_w_coords = generate_location_w_coords()
 
 # Layout - map, data panel and alerts
 layout = dbc.Container([
@@ -63,7 +68,7 @@ layout = dbc.Container([
             dl.Map(
                 id="map",
                 children=[
-                    esri_hybrid, esri_labels, admin_boundaries, dl.FeatureGroup([edit_control]), dl.LayerGroup(id="marker-layer"),
+                    esri_hybrid, esri_labels, admin_boundaries, region_bboxes, dl.FeatureGroup([edit_control]), dl.LayerGroup(id="marker-layer"),
                     dl.GeoJSON(
                         id="vector-layer", 
                         zoomToBounds=True, 
