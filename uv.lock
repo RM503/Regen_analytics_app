@@ -2370,7 +2370,7 @@ wheels = [
 ]
 
 [[package]]
-name = "regen-analytics-app"
+name = "regenorganics-analytics-app"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
