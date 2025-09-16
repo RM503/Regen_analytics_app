@@ -137,7 +137,7 @@ layout = dbc.Container([
     dcc.Interval(id="token_interval", interval=500, max_intervals=1),
     dcc.Store(id="token_store", storage_type="session"),
     dbc.Button("INSERT soil data", id="insert_soil_data", disabled=True, className="me-2"),
-    dbc.Alert(id="insert_soil_data_notification", is_open=False, duration=5000),
+    dbc.Alert(id="insert_soil_data_notification", is_open=False, duration=10000),
     dbc.Button("INSERT farm stats", id="insert_farm_stats", disabled=True),
-    dbc.Alert(id="insert_farm_stats_notification", is_open=False, duration=5000)
+    dbc.Alert(id="insert_farm_stats_notification", is_open=False, duration=10000)
 ])

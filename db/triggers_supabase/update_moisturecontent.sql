@@ -19,7 +19,7 @@ BEGIN
     SELECT
         region,
         moisture_content,
-        COUNT(*) AS counts,
+        COUNT(DISTINCT uuid) AS counts,
         now() AS updated_at
     FROM (
         SELECT
