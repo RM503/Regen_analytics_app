@@ -7,7 +7,8 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from aiohttp import ClientError
-from dash import Dash, Input, Output, State, ctx, dash_table
+import dash
+from dash import Dash, Input, Output, State, ctx, dash_table, dcc
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import dotenv
@@ -278,6 +279,50 @@ def init_dash2(server: Flask) -> Dash:
         soil_disabled = not token or not isda_soil_data
         farm_disabled = not token or not farm_stats
         return soil_disabled, farm_disabled
+
+    @app.callback(
+        Output("download_soil_data_button", "disabled"),
+        Input("isda_soil_data", "data")
+    )
+    def enable_soil_data_download(stored_data: dict[str, Any]) -> bool:
+        if not stored_data:
+            return True 
+        return False
+    
+    @app.callback(
+        Output("download_farm_stats_button", "disabled"),
+        Input("farm_stats", "data")
+    )
+    def enable_farm_stats_download(stored_data: dict[str, Any]) -> bool:
+        if not stored_data:
+            return True 
+        return False
+
+    @app.callback(
+        Output("download_soil_data", "data"),
+        Input("download_soil_data_button", "n_clicks"),
+        State("isda_soil_data", "data"),
+        prevent_initial_call=True
+    )
+    def download_soil_data(n_clicks: int, stored_data: dict[str, Any]) -> Any:
+        # Enables downloading of soildata
+        if stored_data:
+            df = pd.DataFrame(stored_data)
+            return dcc.send_data_frame(df.to_csv, "soil_data.csv", index=False)
+        return dash.no_update
+    
+    @app.callback(
+        Output("download_farm_stats", "data"),
+        Input("download_farm_stats_button", "n_clicks"),
+        State("farm_stats", "data"),
+        prevent_initial_call=True
+    )
+    def download_farm_stats(n_clicks: int, stored_data: dict[str, Any]) -> Any:
+        # Enables downloading of farm stats
+        if stored_data:
+            df = pd.DataFrame(stored_data["df_stats"])
+            return dcc.send_data_frame(df.to_csv, "farm_stats.csv", index=False)
+        return dash.no_update
 
     # ========== Data INSERTs ==========
     """

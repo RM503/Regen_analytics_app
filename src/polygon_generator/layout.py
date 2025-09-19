@@ -128,11 +128,32 @@ layout = dbc.Container([
                 }
             ),
             html.Div([
-                dbc.Button("Download polygons", id="download_button", n_clicks=0, disabled=True),
+                dbc.Button(
+                    "Download farmpolygons", 
+                    id="download_button", 
+                    n_clicks=0, 
+                    disabled=True,
+                    className="me-2",
+                    style={
+                        "background-color": "#DC143C",
+                        "color": "white",
+                        "border": "white"
+                    }
+                ),
                 dcc.Download(id="download_polygons"), 
                 dcc.Interval(id="token_interval", interval=500, max_intervals=1),
                 dcc.Store(id="token_store", storage_type="session"),
-                dbc.Button("INSERT", id="insert_button", disabled=True),
+                dbc.Button(
+                    "INSERT farmpolygons", 
+                    id="insert_button", 
+                    disabled=True,
+                    className="me-2",
+                    style={
+                        "background-color": "#008B8B",
+                        "color": "white",
+                        "border": "white"
+                    }
+                ),
                 dcc.Store(id="polygons_store"), # Stores data on selected polygons
             ], style={"display": "flex", "gap": "10px"}),
             dbc.Alert(id="polygon_count_alert", is_open=False, color="warning", duration=10000),

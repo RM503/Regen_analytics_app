@@ -136,8 +136,54 @@ layout = dbc.Container([
     html.Br(),
     dcc.Interval(id="token_interval", interval=500, max_intervals=1),
     dcc.Store(id="token_store", storage_type="session"),
-    dbc.Button("INSERT soil data", id="insert_soil_data", disabled=True, className="me-2"),
+    dbc.Button(
+        "Download soil data", 
+        id="download_soil_data_button", 
+        disabled=True, 
+        className="me-2",
+        style={
+            "background-color": "#DC143C",
+            "color": "white",
+            "border": "white"
+        }
+    ),
+    dcc.Download(id="download_soil_data"),
+    dbc.Button(
+        "INSERT soil data", 
+        id="insert_soil_data", 
+        n_clicks=0,
+        disabled=True, 
+        className="me-2",
+        style={
+            "background-color": "#008B8B",
+            "color": "white",
+            "border": "white"
+        }
+    ),
     dbc.Alert(id="insert_soil_data_notification", is_open=False, duration=10000),
-    dbc.Button("INSERT farm stats", id="insert_farm_stats", disabled=True),
+    dbc.Button(
+        "Download farm stats", 
+        id="download_farm_stats_button", 
+        n_clicks=0,
+        disabled=True, 
+        className="me-2",
+        style={
+            "background-color": "#DC143C",
+            "color": "white",
+            "border": "white"
+        }
+    ),
+    dcc.Download(id="download_farm_stats"),
+    dbc.Button(
+        "INSERT farm stats", 
+        id="insert_farm_stats", 
+        disabled=True,
+        className="me-2",
+        style={
+            "background-color": "#008B8B",
+            "color": "white",
+            "border": "white"
+        }
+    ),
     dbc.Alert(id="insert_farm_stats_notification", is_open=False, duration=10000)
 ])
