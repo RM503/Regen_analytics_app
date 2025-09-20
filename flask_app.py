@@ -16,6 +16,7 @@ from supabase import create_client
 from werkzeug.wrappers import Response
 
 from auth.supabase_auth import supabase_auth
+from config_loader import init_config
 from src.initial_market_data.dash0_main import init_dash0
 from src.polygon_generator.dash1_main import init_dash1
 from src.farmland_characteristics.dash2_main import init_dash2
@@ -23,6 +24,7 @@ from src.farmland_statistics.dash3_main import init_dash3
 
 from logging_config import setup_logging
 
+init_config()
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -99,4 +101,4 @@ init_dash2(app)
 init_dash3(app)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)

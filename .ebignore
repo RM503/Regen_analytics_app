@@ -1,0 +1,8 @@
+config
+
+docker-compose.yaml
+Dockerfile.dev
+
+.env
+.env.docker 
+__pycache__
