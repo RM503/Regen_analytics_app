@@ -15,7 +15,7 @@ from shapely.wkt import loads
 
 logging.getLogger(__name__)
 
-dotenv.load_dotenv(override=True)
+#dotenv.load_dotenv(override=True)
 USERNAME = os.getenv("isda_username")
 PASSWORD = os.getenv("isda_password")
 

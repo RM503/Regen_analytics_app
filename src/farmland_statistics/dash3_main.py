@@ -27,7 +27,7 @@ def init_dash3(server: Flask) -> Dash:
     app.title = "Farmland analytics"
     app.layout = layout
 
-    dotenv.load_dotenv(override=True)
+    #dotenv.load_dotenv(override=True)
 
     # Create SQLAlchemy engine
     try:

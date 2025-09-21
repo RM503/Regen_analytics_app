@@ -8,7 +8,7 @@ from supabase import create_client
 
 logging.basicConfig(level=logging.INFO)
 
-dotenv.load_dotenv()
+#dotenv.load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")

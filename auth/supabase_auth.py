@@ -10,7 +10,7 @@ from supabase import Client, create_client
 
 logging.basicConfig(level=logging.INFO)
 
-dotenv.load_dotenv(override=True)
+#dotenv.load_dotenv(override=True)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 

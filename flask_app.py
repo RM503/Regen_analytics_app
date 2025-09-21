@@ -15,8 +15,12 @@ from flask import (
 from supabase import create_client
 from werkzeug.wrappers import Response
 
-from auth.supabase_auth import supabase_auth
 from config_loader import init_config
+
+init_config() # noqa: E402
+
+from auth.supabase_auth import supabase_auth
+
 from src.initial_market_data.dash0_main import init_dash0
 from src.polygon_generator.dash1_main import init_dash1
 from src.farmland_characteristics.dash2_main import init_dash2
@@ -24,12 +28,11 @@ from src.farmland_statistics.dash3_main import init_dash3
 
 from logging_config import setup_logging
 
-init_config()
 setup_logging()
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-dotenv.load_dotenv(override=True)
+#dotenv.load_dotenv(override=True)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
@@ -101,4 +104,4 @@ init_dash2(app)
 init_dash3(app)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=8080, debug=True)

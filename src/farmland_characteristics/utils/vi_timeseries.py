@@ -14,7 +14,7 @@ from .preprocessing import clean_vi_series
 
 logger = logging.getLogger(__name__)
 
-dotenv.load_dotenv(override=True)
+#dotenv.load_dotenv(override=True)
 # GEE_PROJECT = os.getenv("GEE_PROJECT")
 
 # #ee.Authenticate()

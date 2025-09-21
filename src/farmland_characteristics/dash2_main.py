@@ -32,7 +32,7 @@ from .utils.isda_soil_data import main as get_soil_data
 
 logger = logging.getLogger(__name__)
 
-dotenv.load_dotenv()
+#dotenv.load_dotenv()
 
 if USE_LOCAL_DB:
     logging.info(

@@ -28,7 +28,7 @@ from .utils import generate_location_w_coords
 
 logger = logging.getLogger(__name__)
 
-dotenv.load_dotenv()
+#dotenv.load_dotenv()
 
 if USE_LOCAL_DB:
     logging.info(
