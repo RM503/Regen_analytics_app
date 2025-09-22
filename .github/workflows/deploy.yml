@@ -37,5 +37,4 @@ jobs:
       - name: Deploy to Elastic Beanstalk
         run: |
           eb init regen-organics-analytics-app --region us-east-1 --platform "Docker"
-          eb use regen-app-test   
-          eb deploy --staged
+          eb deploy --staged --verbose
