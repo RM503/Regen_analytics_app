@@ -1,0 +1,28 @@
+# CI/CD pipeline for Elastic Beanstalk deployment
+name: AWS EB CI/CD Pipeline
+
+on:
+    push:
+        branches:
+            - main # trigger only for main branch
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v2
+            - name: Set up Python
+              uses: actions/setup-python@v2
+              with:
+                python-version: '3.11'
+            - name: Install EB CLI
+              run: pip install awsebcli
+            - name: Deploy to AWS EB
+              env:
+                AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+              run: |
+                eb use regen-organics-analytics-app
+                eb deploy --staged
+              
