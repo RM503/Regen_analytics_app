@@ -11,19 +11,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2️⃣ Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # 3️⃣ Install AWS EB CLI and dependencies
       - name: Install AWS EB CLI
         run: |
           pip install --upgrade pip
           pip install awsebcli
 
+      # 4️⃣ Configure AWS credentials from GitHub secrets
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -31,10 +35,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      # 5️⃣ Debug AWS identity (optional)
       - name: Debug AWS identity
         run: aws sts get-caller-identity
 
+      # 6️⃣ Write credentials.json from GitHub secret
+      - name: Write GEE credentials
+        run: |
+          mkdir -p ~/.config/earthengine
+          echo "${{ secrets.GEE_CREDENTIALS_JSON }}" > ~/.config/earthengine/credentials.json
+
+      # 7️⃣ Initialize EB and deploy
       - name: Deploy to Elastic Beanstalk
         run: |
+          # Initialize EB app (platform already set in .elasticbeanstalk/config.yml)
           eb init regen-organics-analytics-app --region us-east-1 --platform "Docker"
+          # Deploy to the environment mapped to main branch
           eb deploy --staged --verbose
+
+      # 8️⃣ Optional: fetch logs if deployment fails
+      - name: Fetch EB logs for debugging
+        if: failure()
+        continue-on-error: true
+        run: |
+          eb logs --all
