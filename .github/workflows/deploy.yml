@@ -1,38 +1,46 @@
-name: AWS EB CI/CD Deployment
+name: Deploy to AWS Elastic Beanstalk
 
 on:
   push:
     branches:
-      - main  # Trigger deployment on pushes to main
+      - main
+  workflow_dispatch: # allow manual trigger
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install EB CLI
+      - name: Install AWS EB CLI
         run: |
           pip install --upgrade pip
           pip install awsebcli
 
-      - name: Deploy to Elastic Beanstalk
-        env:  # Step-level environment variables
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Debug AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Initialize EB CLI
         run: |
+          eb init regen-organics-analytics-app \
+            --region us-east-1 \
+            --platform "Python 3.11"
 
-          # Initialize EB CLI with your app (no --profile needed)
-          eb init regen-organics-analytics-app --region us-east-1 --platform "Python 3.11"
-
-          # Select the environment
+      - name: Deploy to Elastic Beanstalk
+        run: |
           eb use regen-organics-analytics-app
-
-          # Deploy the latest changes
           eb deploy --staged
