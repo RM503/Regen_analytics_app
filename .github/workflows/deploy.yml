@@ -34,13 +34,8 @@ jobs:
       - name: Debug AWS identity
         run: aws sts get-caller-identity
 
-      - name: Initialize EB CLI
-        run: |
-          eb init regen-organics-analytics-app \
-            --region us-east-1 \
-            --platform "Python 3.11"
-
       - name: Deploy to Elastic Beanstalk
         run: |
-          eb use regen-organics-analytics-app
+          eb init regen-organics-analytics-app --region us-east-1 --platform "Python 3.11"
+          eb use regen-app-test   
           eb deploy --staged
