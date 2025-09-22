@@ -4,12 +4,12 @@
 
 # Regen Organics analytics app
 ## What is this app for?
-This is an analytics app designed by [DataKind](https://www.datakind.org/) for [Regen Organics](https://www.regenorganics.co/), serving two primary purposes:
+This is an analytics app designed by volunteers at [DataKind](https://www.datakind.org/) for [Regen Organics](https://www.regenorganics.co/), serving two primary purposes:
 
 * Generate key statistics related to planting cycles and crop growth using vegetation indices (NDVI and NDMI) with the help of Google Earth Engine (GEE) backend
-* Serve as an analytics dashboard containing data and visualizations from initial market data, pre-existing analyses and trained models. The app also includes functionalities for inserting newly queried farm polygons for analyses (only for authenticated users).
+* Serve as an analytics dashboard containing data and visualizations from initial market data, pre-existing analyses and trained models. The app also includes functionalities for inserting newly queried farm polygons for analyses and visualizations (only available for authenticated users).
 
-The design and functionality of this app relies heavily on the workflow carried out during the research phases of the project - which includes data generation, visualization, ETL and ML model training. The codebase can be accessed through the following link:
+The design and functionality of this app relies heavily on the workflow carried out during the research phases of the project - which included extensive planning, data generation, visualization, ETL and ML model training. The codebase can be accessed through the following link:
 
 https://github.com/RM503/DataKind_Geospatial/
 
@@ -36,13 +36,12 @@ and run
 docker run --env-file .env.docker -p 8000:8000 <whatever_name_you_want:version>>
 ```
 
-In the run command, the environment variables are explicitly injected using the `.env.docker` file. A simpler method is to user the `docker-compose.yaml` file using the following command
-
+In the run command, the environment variables are explicitly injected using the `.env.docker` file. A prebuilt image can also be found in Docker Hub and pulled using
 ```
-docker compose up
+docker pull rmahbub503/regen_organics_analytics_app:v1
 ```
 
- After the preceding steps have been completed, the app can be run locally at http://0.0.0.0:8000. The app, at the moment, uses the following APIs and services
+ After the preceding steps have been completed, the app can be run locally. The app, at the moment, uses the following APIs and services
 
 * Google Earth Engine (GEE) Python API for calculating NDVI-NDMI curves from queried polygons
 * iSDA API for extracting soil quantities for queried polygons
@@ -60,6 +59,14 @@ SUPABASE_URL=...
 ```
 For a complete set of instructions on how to use the app, please check the `docs` folder.
 
+## Access through AWS Elastic Beanstalk
+
+A test deployment of the app currently exists in AWS Elastic Beanstalk as well. 
+
+
+http://regen-app-test.eba-btqhah9s.us-east-1.elasticbeanstalk.com/
+
+The app is currently being deployed from the `us-east-1` region. Hence, access from a region other than this will possibly introduce latency.
 ## How to use this app?
 
 The app is divided into multiple dashboards, each serving different purposes. This can be seen upon launching the app, taking the user to the landing page. The following contains detailed information regarding each dashboard:
