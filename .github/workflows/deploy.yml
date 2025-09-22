@@ -4,15 +4,15 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # allow manual trigger
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout the repository
-      - name: Checkout code
+      # 1️⃣ Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       # 2️⃣ Set up Python
@@ -21,13 +21,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      # 3️⃣ Install AWS EB CLI and dependencies
+      # 3️⃣ Install AWS EB CLI
       - name: Install AWS EB CLI
         run: |
           pip install --upgrade pip
           pip install awsebcli
 
-      # 4️⃣ Configure AWS credentials from GitHub secrets
+      # 4️⃣ Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -39,21 +39,22 @@ jobs:
       - name: Debug AWS identity
         run: aws sts get-caller-identity
 
-      # 6️⃣ Write credentials.json from GitHub secret
-      - name: Write GEE credentials
+      # 6️⃣ Write credentials.json from secret
+      - name: Write credentials.json
         run: |
-          mkdir -p ~/.config/earthengine
-          echo "${{ secrets.GEE_CREDENTIALS_JSON }}" > ~/.config/earthengine/credentials.json
+          cat <<EOF > ./credentials.json
+          ${{ secrets.GEE_CREDENTIALS_JSON }}
+          EOF
 
-      # 7️⃣ Initialize EB and deploy
+      # 7️⃣ Deploy to Elastic Beanstalk
       - name: Deploy to Elastic Beanstalk
         run: |
-          # Initialize EB app (platform already set in .elasticbeanstalk/config.yml)
+          # Initialize EB app
           eb init regen-organics-analytics-app --region us-east-1 --platform "Docker"
-          # Deploy to the environment mapped to main branch
+          # Deploy to environment mapped to 'main' branch in .elasticbeanstalk/config.yml
           eb deploy --staged --verbose
 
-      # 8️⃣ Optional: fetch logs if deployment fails
+      # 8️⃣ Fetch EB logs if deployment fails
       - name: Fetch EB logs for debugging
         if: failure()
         continue-on-error: true
