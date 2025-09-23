@@ -15,9 +15,6 @@ COPY . .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Ensure Flask binds to 0.0.0.0
-ENV FLASK_RUN_HOST=0.0.0.0
-ENV FLASK_RUN_PORT=8080
 EXPOSE 8080
 
 # Use Gunicorn to run the Flask app
