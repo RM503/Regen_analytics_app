@@ -48,18 +48,6 @@ layout = dbc.Container([
             html.P("Select options from the dropdown menus below:"),
             dbc.Row([
                 dbc.Col([
-                    # dcc.Dropdown(
-                    #     options=list(location_w_coords.keys()),
-                    #     value="Trans_Nzoia_1",
-                    #     id="location-dropdown",
-                    #     style={
-                    #             "width": "200px",
-                    #             "backgroundColor": "#222",   # background of the dropdown
-                    #             "color": "black",            # selected text color
-                    #             "border": "1px solid #444",
-                    #         },
-                    #     clearable=True
-                    # )
                     dbc.Row([
                         dbc.Col([
                             dcc.Dropdown(
@@ -97,34 +85,21 @@ layout = dbc.Container([
     ]),
     dbc.Row([
         dbc.Col([
-            # dl.Map(
-            #     id="map",
-            #     children=[
-            #         esri_hybrid, esri_labels
-            #     ],
-            #     center=location_w_coords["Trans_Nzoia_1"],
-            #     zoom=12,
-            #     style={"height": "50vh"}
-            # )
             dcc.Graph(id="choropleth_map")
-        ], xs=6),
+        ], xs=6, md=6, lg=6),
         dbc.Col([
             dcc.Graph(id="high_ndmi")
-        ])
+        ], xs=6, md=6, lg=6)
     ]),
     dbc.Row([
         dbc.Col([
             dcc.Graph(id="ndvi_peak_monthly")
-        ], width=4),
+        ], xs=4, md=4, lg=4),
         dbc.Col([
             dcc.Graph(id="ndvi_peak_annual")
-        ], width=4),
+        ], xs=4, md=4, lg=4),
         dbc.Col([
             dcc.Graph(id="moisture_level")
-        ], width=4)
+        ], xs=4, md=4, lg=4)
     ]),
-    html.Hr(),
-    dbc.Row([
-        html.H1("Drought-risk assessment", style={"fontSize": "30px", "textAlign": "center"})
-    ])
-])
+], fluid=True, className="px-2 px-md-4 px-lg-5")

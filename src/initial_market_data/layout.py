@@ -9,19 +9,20 @@ layout = dbc.Container([
     dbc.Row([
         html.H1("Initial Market Data", style={"fontSize": "30px", "textAlign": "center"})
     ]),
+    html.Hr(),
     dbc.Row([
         dbc.Col([
             dcc.Graph(
                 id="new_custs_time_region",
                 figure=new_custs_time_region
             )
-        ]),
+        ], xs=12, md=6, lg=6),
         dbc.Col([
             dcc.Graph(
                 id="total_sales_vol_time_region",
                 figure=total_sales_vol_time_region
             )
-        ])
+        ], xs=12, md=6, lg=6)
     ]),
     html.Br(),
     dbc.Row([
@@ -57,10 +58,10 @@ layout = dbc.Container([
     dbc.Row([
         dbc.Col([
             dcc.Graph(id="purchases_sales_graph")
-        ]),
+        ], xs=12, md=6, lg=6),
         dbc.Col([
             dcc.Graph(id="distributor_graph")
-        ])
+        ], xs=12, md=6, lg=6)
     ]),
     dbc.Row([
         dbc.Col([
@@ -94,4 +95,4 @@ layout = dbc.Container([
             )
         ], width=12, style={"overflow": "hidden"})  
     ])
-])
+], fluid=True, className="px-2 px-md-4 px-lg-5")

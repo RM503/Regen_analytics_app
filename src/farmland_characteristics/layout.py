@@ -53,6 +53,7 @@ layout = dbc.Container([
     dbc.Row([
         html.H1("Farmland vegetation and moisture", style={"fontSize": "30px", "textAlign": "center"})
     ]),
+    html.Hr(),
     dbc.Row([
         html.P("Use the polygon data generated from the 'Polygon Generator' app to obtain NDVI and NDMI time-series curves \
                of the queried region(s). Polygon data can be either typed individually or uploaded. The plots will display \
@@ -98,7 +99,7 @@ layout = dbc.Container([
                 multiple=False
             ),
             html.Div(id='output-data-upload'),
-        ]),
+        ], xs=6, md=6, lg=6),
         dbc.Col([
             html.H4("Generated data"),
             html.Br(),
@@ -120,7 +121,7 @@ layout = dbc.Container([
                     ]
                 )
             ])
-        ])
+        ], xs=6, md=6, lg=6)
     ]),
     html.Br(),
     dbc.Row(html.H4("Planting cycles, moisture levels and soil quantities")),
@@ -186,4 +187,4 @@ layout = dbc.Container([
         }
     ),
     dbc.Alert(id="insert_farm_stats_notification", is_open=False, duration=10000)
-])
+], fluid=True, className="px-2 px-md-4 px-lg-5")

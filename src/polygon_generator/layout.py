@@ -58,6 +58,7 @@ layout = dbc.Container([
     dbc.Row([
         html.H1("Polygon generator", style={"fontSize": "30px", "textAlign": "center"})
     ]),
+    html.Hr(),
     dbc.Row([
         html.P("Use the dropdown menu and interactive map to toggle to various distributor locations and draw polygons. At any given time," \
         " the maximum number of polygons drawn should be kept to five. Use the coordinates of the polygons displayed for further querying purposes. \
@@ -83,7 +84,7 @@ layout = dbc.Container([
                 zoom=7,
                 style={"height": "85vh"}
             ),
-        ], xs=6),
+        ], xs=6, md=6, lg=6),
         dbc.Col([
             html.Div(
                 [
@@ -159,6 +160,6 @@ layout = dbc.Container([
             dbc.Alert(id="polygon_count_alert", is_open=False, color="warning", duration=10000),
             dbc.Alert(id="area_limit_alert", is_open=False, color="danger", duration=10000),
             dbc.Alert(id="insert_notification", is_open=False, className="mb-2", duration=10000)
-        ], xs=6)
+        ], xs=6, md=6, lg=6)
     ])
-], fluid=True)
+], fluid=True, style={"height": "100vh"}, className="px-2 px-md-4 px-lg-5")
