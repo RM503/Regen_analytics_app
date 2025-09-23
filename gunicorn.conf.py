@@ -6,7 +6,7 @@ import os
 port = os.environ.get("PORT", 8080)
 
 bind = f"0.0.0.0:{port}"
-timeout = 120
+timeout = 600
 workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = "gthread"
 preload_app = True

@@ -71,8 +71,3 @@ def init_config() -> None:
     else:
         logging.info("Running in local environment.")
         load_from_file(".env", overwrite=False)
-
-    logging.info(
-        "Environment variables loaded: %s",
-        json.dumps({k: v for k, v in os.environ.items() if k in ["APP_ENV", "DB_URL"]}, indent=2),
-    )
