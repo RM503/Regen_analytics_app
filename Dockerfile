@@ -1,21 +1,21 @@
 # Dockerfile for AWS EB deployment
 
 FROM python:3.11-slim
+LABEL maintainer="Rafid Mahbub" \
+      version="1.1.0" \
+      description="Regen Organics analytics app v1.1.0"
 
 # Set working directory
 WORKDIR /app
 
-# Copy credentials.json first (for caching)
 COPY credentials.json .
 
-# Copy the rest of the application
 COPY . .
 
-# Upgrade pip and install dependencies
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8080
+# Expose port 8080 for nginx
+EXPOSE 8080 
 
-# Use Gunicorn to run the Flask app
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "flask_app:app"]

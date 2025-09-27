@@ -20,7 +20,10 @@ wheels/
 logs/
 config/
 
+migrations
+
 src/initial_market_data/plots_json
+src/polygon_generator/region_bboxes.geojson
 src/farmland_characteristics/dash2_test.py
 src/farmland_characteristics/test_data
 

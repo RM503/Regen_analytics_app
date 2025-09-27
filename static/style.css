@@ -12,6 +12,17 @@ body {
     padding: 2rem;
 }
 
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+  
+  .my-element {
+    height: 100vh;
+    background-color: lightblue;
+  }
+
 h1 {
     text-align: center;
     font-size: 2rem;

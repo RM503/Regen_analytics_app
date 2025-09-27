@@ -1,5 +1,8 @@
 # Dockerfile for local development
 FROM python:3.11-slim
+LABEL maintainer="Rafid Mahbub" \
+      version="1.1.0" \
+      description="Regen Organics analytics app v1.1.0"
 
 WORKDIR /app
 

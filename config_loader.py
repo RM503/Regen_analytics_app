@@ -53,7 +53,6 @@ def load_from_file(path: str, overwrite: bool = False) -> None:
     if Path(path).exists():
         load_dotenv(path, override=overwrite)
 
-
 def init_config() -> None:
     """
     Initialize configuration:

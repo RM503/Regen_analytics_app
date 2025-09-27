@@ -2,7 +2,6 @@
 import logging
 import os 
 
-import dotenv
 from flask import (
     Flask, 
     make_response,
