@@ -3,17 +3,18 @@ import os
 
 from dash import Dash, Input, Output
 import dash_bootstrap_components as dbc
-import dotenv
 from flask import Flask
 import geopandas as gpd
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure
+from shapely.geometry import shape
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlmodel import create_engine
 
 from .layout import layout
+from ..region_bboxes import region_bboxes_to_geojson
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +25,8 @@ def init_dash3(server: Flask) -> Dash:
         routes_pathname_prefix="/farmland_statistics/",
         external_stylesheets=[dbc.themes.DARKLY]
     )
-    app.title = "Farmland analytics"
+    app.title = "Farmland Statistics"
     app.layout = layout
-
-    #dotenv.load_dotenv(override=True)
 
     # Create SQLAlchemy engine
     try:
@@ -200,12 +199,15 @@ def init_dash3(server: Flask) -> Dash:
                 SELECT * FROM soildata WHERE region = %(region)s;
             """
 
+        # Read queried data into a geodataframe using `read_postgis()` method
         gdf = gpd.read_postgis(query, engine, geom_col="geometry", params={"region": location})
-        # gdf = gdf[["uuid", "region", "geometry", map_indicator]]
+   
         gdf["id"] = gdf["uuid"]
 
         geojson = gdf.set_index("id").__geo_interface__
 
+        # Extract region bounding box polygons into GeoJSON
+        regions = region_bboxes_to_geojson()
 
         fig = go.Figure(go.Choroplethmapbox(
             geojson=geojson,
@@ -228,6 +230,7 @@ def init_dash3(server: Flask) -> Dash:
 
         # Mapbox layout
         fig.update_layout(
+            autosize=True,
             mapbox_style="carto-darkmatter",
             mapbox_zoom=10,
             mapbox_center={"lat": gdf.geometry.centroid.y.mean(), "lon": gdf.geometry.centroid.x.mean()},

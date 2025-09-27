@@ -2,6 +2,10 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
+from ..region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
+
+regions = region_bboxes_to_geojson()
+
 # Tile map layers (not Sentinel-2 rasters)
 esri_hybrid = dl.TileLayer(
     url="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -13,12 +17,14 @@ esri_labels = dl.TileLayer(
     attribution="ESRI Labels"
 )
 
-location_w_coords = {
-        "Kajiado_1": [-2.8072, 37.5271],
-        "Kajiado_2": [-3.0318, 37.7068],
-        "Laikipia_1": [0.2580, 36.5353],
-        "Trans_Nzoia_1": [1.0199, 35.0211]
-    }
+region_bboxes = dl.GeoJSON(
+    data=regions,
+    id="region_bboxes",
+    zoomToBounds=True,
+    options=dict(style=dict(weight=1.5, color="cyan", fillOpacity=0))
+)
+
+location_w_coords = generate_location_w_coords(regions)
 
 map_indicators = [
     "ndmi_max",
@@ -43,7 +49,7 @@ map_indicators = [
 
 layout = dbc.Container([
     dbc.Row([
-        html.H1("Farmland analytics", style={"fontSize": "30px", "textAlign": "center"}),
+        html.H1("Farmland Statistics", style={"fontSize": "30px", "textAlign": "center"}),
         html.Div([
             html.P("Select options from the dropdown menus below:"),
             dbc.Row([
