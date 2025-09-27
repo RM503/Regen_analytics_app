@@ -1,17 +1,17 @@
-![Static Badge](https://img.shields.io/badge/version-1.0.0-blue)
+![Static Badge](https://img.shields.io/badge/version-1.1.0-blue)
 ![License](https://img.shields.io/github/license/RM503/Regen_analytics_app)
-
+![AWS](https://img.shields.io/badge/AWS-Elastic%20Beanstalk-orange?logo=amazonaws)
 
 # Regen Organics analytics app
 ## What is this app for?
-This is an analytics app designed by volunteers at [DataKind](https://www.datakind.org/) for [Regen Organics](https://www.regenorganics.co/), serving two primary purposes:
+This is an analytics web application designed by a group of volunteers at [DataKind](https://www.datakind.org/) for [Regen Organics](https://www.regenorganics.co/), serving two primary purposes:
 
-* Generate key statistics related to planting cycles and crop growth using vegetation indices (NDVI and NDMI) with the help of Google Earth Engine (GEE) backend
+* Generate and store key statistics related to planting cycles and crop growth using vegetation indices (NDVI and NDMI) with the help of <u>Google Earth Engine</u> (GEE) and <u>Supabase</u> backends
 * Serve as an analytics dashboard containing data and visualizations from initial market data, pre-existing analyses and trained models. The app also includes functionalities for inserting newly queried farm polygons for analyses and visualizations (only available for authenticated users).
 
 The design and functionality of this app relies heavily on the workflow carried out during the research phases of the project - which included extensive planning, data generation, visualization, ETL and ML model training. The codebase can be accessed through the following link:
 
-https://github.com/RM503/DataKind_Geospatial/
+https://github.com/RM503/DataKind_Geospatial
 
 Even though the app was designed for a particular organization, it can be adapted to the needs of other users. Details on API requirements are provided later in this document.
 
@@ -24,7 +24,7 @@ The complete list of libraries required for running the app can be found in the 
 git clone https://github.com/RM503/Regen_analytics_app.git
 ```
 
-The Docker file is to first build the app
+After the required confifurations are done for the particular use case, it can be run as Docker containers. The app is first built as
 
 ```
 docker build -t <whatever_name_you_want:version> .
@@ -33,7 +33,7 @@ docker build -t <whatever_name_you_want:version> .
 and run
 
 ```
-docker run --env-file .env.docker -p 8000:8000 <whatever_name_you_want:version>>
+docker run --env-file .env.docker -p 8080:8080 <whatever_name_you_want:version>
 ```
 
 In the run command, the environment variables are explicitly injected using the `.env.docker` file. A prebuilt image can also be found in Docker Hub and pulled using
@@ -57,11 +57,11 @@ ISDA_USERNAME=...
 ISDA_PASSWORD=...
 SUPABASE_URL=...
 ```
-For a complete set of instructions on how to use the app, please check the `docs` folder.
+An template is also found in `.env_template`. For a complete set of instructions on how to use the app, please check the `docs` folder.
 
 ## Access through AWS Elastic Beanstalk
 
-A test deployment of the app currently exists in AWS Elastic Beanstalk as well. 
+A test deployment of the app currently exists in AWS Elastic Beanstalk as well-
 
 
 http://regen-app-test.eba-btqhah9s.us-east-1.elasticbeanstalk.com/
@@ -72,11 +72,11 @@ The app is currently being deployed from the `us-east-1` region. Hence, access f
 The app is divided into multiple dashboards, each serving different purposes. This can be seen upon launching the app, taking the user to the landing page. The following contains detailed information regarding each dashboard:
 * **Initial Market Data:** This dashboard contains exploratory data analysis using initial sales and leads data provided by Regen Organics. 
 
-* **Polygon Generator:** This dashboard contains an interactive tile map which the user can use to explore regions on interest in Kenya, identify farms (at least visually) and draw polygons around them. Once a polygon is drawn, information on it will be generated, which contain a unique identifier (uuid), area in acres and polygon geometry. Note, however, that the app will only allow a maximum of five polygons to be queried at a given time before refreshing.
+* **Polygon Generator:** This dashboard contains an interactive tile map which the user can leverage to explore regions of interest in Kenya, identify farms (through coordinate searches) and draw polygons around them. Once a polygon is drawn, information on it will be generated, which contain a unique identifier (uuid), area in acres and polygon geometry. Note, however, that the app will only allow a maximum of five polygons to be queried at a given time before refreshing.
 
-* **Farmland Characteristics:** The user(s) can use the polygons generated in the previous dashboard to obtain NDVI-NDMI time series curves. These indices are extremely important for assessing crop/vegetation health and moisture levels. Furthermore, this dashboard also yields tabulated data that returns information on peak crop growing seasons, number of planting cycles, moisture level and important soil characteristics.
+* **Farmland Characteristics:** User(s) can use the polygons generated in the previous dashboard to obtain NDVI-NDMI time series curves. These indices are extremely important for assessing crop/vegetation health and moisture levels. Furthermore, this dashboard also yields tabulated data that returns information on peak crop growing seasons, number of planting cycles, moisture levels and important soil characteristics.
 
-* **Farmland Statistics:** This dashboard contains analyses results obtained from the research phase of the project, containing region-aggregated statistics on various metrics that have been deemed important for the project. Importantly, this dashboard can be used as a means of comparing farmland performance of various distributor locations.
+* **Farmland Statistics:** This dashboard contains analyses results obtained from the research phase of the project, containing region-aggregated statistics on various metrics that have been deemed important for the project. Importantly, this dashboard can be used as a means of comparing farmland performance of various distributor locations. Newly acquired data are also refreshed into the dashboard through <u>PostgreSQL</u> triggers.
 
 As noted earlier, `INSERT` operations can only be performed by authenticated users. Currently, `UPDATE` and `DELETE` operations can only be performed by users with administrative access to Supabase.
 
