@@ -1,9 +1,10 @@
 # Obtains NDVI and NDMI time-series from queried polygons
+from datetime import date
 import logging
 import os 
 from uuid import uuid4
 
-import dotenv
+from dateutil.relativedelta import relativedelta
 import ee
 import numpy as np
 import pandas as pd
@@ -14,11 +15,6 @@ from .preprocessing import clean_vi_series
 
 logger = logging.getLogger(__name__)
 
-#dotenv.load_dotenv(override=True)
-# GEE_PROJECT = os.getenv("GEE_PROJECT")
-
-# #ee.Authenticate()
-# ee.Initialize(project=GEE_PROJECT)
 credentials = ee.ServiceAccountCredentials(
     os.environ["EE_SERVICE_ACC_EMAIL"],
     key_file=os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
@@ -105,8 +101,14 @@ def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
     shapely_polygon = wkt.loads(RoI)
     RoI = ee.Geometry.Polygon(shapely_polygon.__geo_interface__["coordinates"])
 
-    START_DATE = "2020-01-01"
-    END_DATE = "2024-12-31"
+    """
+    VI data is generated for a time year time span given current date.
+    """
+    today = date.today()
+    five_years_ago = today - relativedelta(years=5)
+
+    START_DATE = five_years_ago.strftime("%Y-%m-%d")
+    END_DATE = today.strftime("%Y-%m-%d")
 
     vi_map = {
         "ndvi": VIIndex.add_NDVI,

@@ -5,7 +5,7 @@ import dash_leaflet as dl
 import geopandas as gpd 
 import json
 
-from .utils import generate_location_w_coords
+from ..region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
 
 # Import administrative boundaries shapefile and convert to geojson
 gdf = gpd.read_file("src/polygon_generator/shapefiles/ken_adm_iebc_20191031_shp/ken_admbnda_adm2_iebc_20191031.shp")
@@ -13,9 +13,7 @@ if gdf.crs and gdf.crs.to_epsg() != 4326:
     gdf = gdf.to_crs(epsg=4326)
 
 geometries = json.loads(gdf["geometry"].to_json())
-
-with open("src/polygon_generator/region_bboxes.geojson", "r") as f:
-    regions = json.load(f)
+regions = region_bboxes_to_geojson()
 
 # Tile map layers (not Sentinel-2 rasters)
 esri_hybrid = dl.TileLayer(
@@ -49,7 +47,7 @@ edit_control = dl.EditControl(
 )
 
 # Distributor locations with coordinates go here
-location_w_coords = generate_location_w_coords()
+location_w_coords = generate_location_w_coords(regions)
 
 # Layout - map, data panel and alerts
 layout = dbc.Container([
@@ -95,7 +93,7 @@ layout = dbc.Container([
                         placeholder="Enter latitude, longitude",
                         n_submit=0,
                         style={
-                            "width": "725px",
+                            "width": "100%",
                             "backgroundColor": "#222",   
                             "color": "white",            
                             "border": "1px solid #444",
@@ -110,6 +108,7 @@ layout = dbc.Container([
                     value="Default",
                     id="location_dropdown",
                     style={
+                        "width": "100%",
                         "backgroundColor": "#222",   
                         "color": "black",            
                         "border": "1px solid #444",

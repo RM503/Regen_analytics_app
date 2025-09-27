@@ -9,7 +9,6 @@ import dash
 from dash import Dash, dash_table, dcc, Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
-import dotenv
 from flask import Flask
 from flask import session
 import pandas as pd
@@ -24,11 +23,11 @@ from auth.supabase_auth import get_supabase_client
 from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
 from db.db_utils import db_connect
 from .layout import layout
-from .utils import generate_location_w_coords
+from ..region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
 
 logger = logging.getLogger(__name__)
 
-#dotenv.load_dotenv()
+regions = region_bboxes_to_geojson()
 
 if USE_LOCAL_DB:
     logging.info(
@@ -74,7 +73,7 @@ def init_dash1(server: Flask) -> Dash:
                 logging.error(f"Error parsing coordinates: {e}")
                 pass
 
-        location_w_coords = generate_location_w_coords()
+        location_w_coords = generate_location_w_coords(regions)
 
         coords = location_w_coords.get(location, [1.00, 38.00])
         marker = dl.Marker(position=coords, children=dl.Popup(location or "Default")) # Marker placed at toggled location
