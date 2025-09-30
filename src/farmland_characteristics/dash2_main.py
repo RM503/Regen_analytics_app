@@ -11,8 +11,6 @@ import dash
 from dash import Dash, Input, Output, State, ctx, dash_table, dcc
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
-import dotenv
-import ee
 from flask import Flask
 from flask import session
 import numpy as np
@@ -30,7 +28,6 @@ from .utils.vi_timeseries import combined_timeseries
 from .utils.parse_contents import parse_contents
 from .utils.farm_stats import calculate_farm_stats
 from .utils.isda_soil_data import main as get_soil_data
-from .utils.gee_images import get_rgb_image, convert_wkt_to_ee_geometry, get_image_dates
 
 logger = logging.getLogger(__name__)
 
@@ -261,81 +258,6 @@ def init_dash2(server: Flask) -> Dash:
             style_header={'backgroundColor': '#111', 'color': 'white'},
             style_data={'backgroundColor': '#222', 'color': 'white'},
         )
-
-    @app.callback(
-        Output("image-modal", "is_open"),
-        Output("gee-image", "src"),
-        Output("image-date-text", "children"),
-        Output("date-slider", "max"),
-        Output("date-slider", "marks"),
-        Output("date-slider", "value"),
-        Input("ndvi_plot", "clickData"),
-        Input("ndmi_plot", "clickData"),
-        Input("close-modal", "n_clicks"),
-        State("polygon_wkt_store", "data"),
-        State("image-modal", "is_open"),
-        prevent_initial_call=True,
-    )
-    def toggle_image_modal(clickData_ndvi, clickData_ndmi, close_clicks, wkt, is_open):
-        if ctx.triggered_id == "close-modal":
-            return False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
-
-        clickData = clickData_ndvi or clickData_ndmi
-        if not clickData or not wkt:
-            raise PreventUpdate
-
-        point = clickData["points"][0]
-        date = point["x"]
-
-        ee_geom = convert_wkt_to_ee_geometry(wkt)
-        
-        collection: ee.ImageCollection = (
-            ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
-            .filterBounds(ee_geom)
-            .filterDate("2023-01-01", "2023-12-31")
-        )
-
-        unique_dates = get_image_dates(collection)
-        
-        try:
-            date_index = unique_dates.index(date.split("T")[0])
-        except ValueError:
-            # If the exact date is not available, find the closest one
-            date_dt = datetime.strptime(date.split("T")[0], "%Y-%m-%d")
-            available_dates = [datetime.strptime(d, "%Y-%m-%d") for d in unique_dates]
-            closest_date = min(available_dates, key=lambda d: abs(d - date_dt))
-            date_index = available_dates.index(closest_date)
-            date = closest_date.strftime("%Y-%m-%d")
-
-        rgb_image = get_rgb_image(ee_geom, date)
-        
-        vis_params = {"min": 0.0, "max": 0.3}
-        image_url = rgb_image.getThumbUrl(vis_params)
-
-        slider_marks = {i: date for i, date in enumerate(unique_dates)}
-
-        return True, image_url, f"Image for: {date}", len(unique_dates) - 1, slider_marks, date_index
-
-    @app.callback(
-        Output("gee-image", "src", allow_duplicate=True),
-        Output("image-date-text", "children", allow_duplicate=True),
-        Input("date-slider", "value"),
-        State("polygon_wkt_store", "data"),
-        State("date-slider", "marks"),
-        prevent_initial_call=True,
-    )
-    def update_image_on_slide(slider_value, wkt, slider_marks):
-        if wkt is None or slider_marks is None:
-            raise PreventUpdate
-
-        date = slider_marks[str(slider_value)]
-        ee_geom = convert_wkt_to_ee_geometry(wkt)
-        rgb_image = get_rgb_image(ee_geom, date)
-        
-        vis_params = {"min": 0.0, "max": 0.3}
-        image_url = rgb_image.getThumbUrl(vis_params)
-
-        return image_url, f"Image for: {date}"
 
     @app.callback(
         Output("token_store", "data"),
