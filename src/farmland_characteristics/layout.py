@@ -49,6 +49,7 @@ layout = dbc.Container([
     dcc.Store(id="geometry_validation_check"),
     dcc.Store(id="farm_stats"),
     dcc.Store(id="isda_soil_data"),
+    dcc.Store(id="polygon_wkt_store"),
     # Layout proper
     dbc.Row([
         html.H1("Farmland vegetation and moisture", style={"fontSize": "30px", "textAlign": "center"})
@@ -135,6 +136,27 @@ layout = dbc.Container([
     html.Br(),
     html.Div(id="isda_soil_data_container"),
     html.Br(),
+    dbc.Modal(
+        [
+            dbc.ModalHeader(dbc.ModalTitle("Satellite RGB Image")),
+            dbc.ModalBody([
+                dcc.Loading(
+                    id="loading-image",
+                    children=[
+                        html.Img(id="gee-image", style={"width": "100%"}),
+                    ]
+                ),
+                html.P(id="image-date-text"),
+                dcc.Slider(id="date-slider", min=0, max=1, step=1, value=0, marks=None, tooltip={"placement": "bottom", "always_visible": True}),
+            ]),
+            dbc.ModalFooter(
+                dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
+            ),
+        ],
+        id="image-modal",
+        size="lg",
+        is_open=False,
+    ),
     dcc.Interval(id="token_interval", interval=500, max_intervals=1),
     dcc.Store(id="token_store", storage_type="session"),
     dbc.Button(
