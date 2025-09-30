@@ -77,21 +77,23 @@ def init_dash3(server: Flask) -> Dash:
         query = text("SELECT * FROM ndvipeaksmonthly WHERE region = :region")
         df = pd.read_sql(query, engine, params={"region": location})
 
+        month_order = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ]
+
         fig = go.Figure()
         for year in sorted(df["ndvi_peak_year"].unique()):
+            subset = df[df["ndvi_peak_year"]==year]
             fig.add_trace(
                 go.Bar(
-                    x=df[df["ndvi_peak_year"]==year]["ndvi_peak_month"],
-                    y=df[df["ndvi_peak_year"]==year]["ndvi_peaks_per_month"],
+                    x=subset["ndvi_peak_month"],
+                    y=subset["ndvi_peaks_per_month"],
                     name=str(year),
-                    marker=dict(
-                        line=dict(
-                            color="white",
-                            width=0.25
-                        )
-                    )
+                    marker=dict(line=dict(color="white", width=0.25))
                 )
             )
+
         fig.update_layout(
             title="Distribution of peak growing seasons",
             plot_bgcolor="#222",
@@ -99,7 +101,7 @@ def init_dash3(server: Flask) -> Dash:
             font=dict(color="white"),
             xaxis_title="Month",
             yaxis_title="Number of green peaks",
-            #barmode="stack"
+            xaxis=dict(categoryorder="array", categoryarray=month_order),
         )
 
         return fig
