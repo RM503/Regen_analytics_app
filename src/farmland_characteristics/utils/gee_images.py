@@ -1,8 +1,32 @@
+# Scripts for generating GEE thumbnails of Sentinel-2 rasters
 import ee
 from shapely import from_wkt
 
+def convert_wkt_to_ee_geometry(wkt: str) -> ee.Geometry:
+    """
+    This function converts WKT string representation of geometries
+    into ee.Geometry objects for GEE.
+
+    Args: (i) polygon geometry in WKT
+
+    Returns: corresponding ee.Geometry object
+    """
+    shapely_polygon = from_wkt(wkt)
+    x_coords, y_coords = shapely_polygon.exterior.coords.xy 
+
+    xy_coords = [[x, y] for x, y in zip(x_coords, y_coords)]
+
+    return ee.Geometry.Polygon(xy_coords)
+
 def mask_s2_clouds(image: ee.Image) -> ee.Image:
-    # This function performs cloud masking with Sentinel 2's Q60 band.
+    """
+    This function performs cloud-masking by using the Q60 band
+    of the Sentinel-2 data.
+
+    Args: (i) image - an ee.Image object to be masked
+    
+    Returns: the image with clouds masked out.
+    """
     qa = image.select("QA60")
     cloud_bit_mask = 1 << 10 # Opaque clouds
     cirrus_bit_mask = 1 << 11 # Cirrus clouds
@@ -47,12 +71,3 @@ def get_rgb_image(geometry: ee.Geometry, START_DATE: str) -> ee.Image:
     rgb = image.select(["B4", "B3", "B2"]).clip(geometry)
 
     return rgb.divide(10000)
-
-def convert_wkt_to_ee_geometry(wkt: str) -> ee.Geometry:
-    # Converts wkt polygons to ee.Geometry objects 
-    shapely_polygon = from_wkt(wkt)
-    x_coords, y_coords = shapely_polygon.exterior.coords.xy 
-
-    xy_coords = [[x, y] for x, y in zip(x_coords, y_coords)]
-
-    return ee.Geometry.Polygon(xy_coords)
