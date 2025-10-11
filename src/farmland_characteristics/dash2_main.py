@@ -11,7 +11,6 @@ import dash
 from dash import Dash, Input, Output, State, ctx, dash_table, dcc
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
-import ee
 from flask import Flask
 from flask import session
 import numpy as np
@@ -25,11 +24,11 @@ from auth.supabase_auth import get_supabase_client
 from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
 from db.db_utils import db_connect
 from .layout import layout
-from .utils.vi_timeseries import combined_timeseries
-from .utils.parse_contents import parse_contents
 from .utils.farm_stats import calculate_farm_stats
+from .utils.gee_images import get_rgb_image, convert_wkt_to_ee_geometry
 from .utils.isda_soil_data import main as get_soil_data
-from .utils.gee_images import get_rgb_image, convert_wkt_to_ee_geometry, get_image_dates
+from .utils.parse_contents import parse_contents
+from .utils.vi_timeseries import combined_timeseries
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +106,7 @@ def init_dash2(server: Flask) -> Dash:
         file_name: Optional[str],
         polygon_wkt: Optional[str],
         is_valid: bool
-    ) -> tuple[Figure, Figure, dict[str, Any], dict[str, Any], str, list[dict[str, Any]]]:
+    ) -> tuple[Figure, Figure, dict[str, Any], dict[str, Any], Optional[str], list[dict[str, Any]], dict[str, Any]]:
         """
         Depending on the validity check from the previous callback, the
         NDVI-NDMI time-series plots will be generated.
@@ -119,11 +118,13 @@ def init_dash2(server: Flask) -> Dash:
                                  if geometry entered through `upload` button
                (v) is_valid - geometry validation (from previous callback)
 
-        Returns: (i) Figure - NDVI time-series plot
-                 (ii) Figure - NDMI time-series plot
-                 (iii) dict - farmland stats in json
-                 (iv) dict - ISDA soil data in json
-                 (v) str - polygon wkt
+        Returns: (i) ndvi_plot - NDVI time-series plot
+                 (ii) ndmi_plot - NDMI time-series plot
+                 (iii) farm_stats - farmland stats in json
+                 (iv) soil_stats - ISDA soil data in json
+                 (v) polygon_store - polygon wkt
+                 (vi) ndvi_timeseries - NDVI time-series data in dcc.Store
+                 (vii) geometery_map_store - a dictionary mapping uuid to geometry wkt
         """
         trigger = ctx.triggered_id
 
@@ -156,7 +157,8 @@ def init_dash2(server: Flask) -> Dash:
         fig_ndvi = go.Figure()
         fig_ndmi = go.Figure()
 
-        geometry_map = {row["uuid"]: row["geometry"] for _, row in df.iterrows()} # create a mapping for uuid and corresponding geometry
+        # create a mapping for uuid and corresponding geometry
+        geometry_map = {row["uuid"]: row["geometry"] for _, row in df.iterrows()} 
         for idx, uuid in enumerate(uuid_list):
             df_uuid = df[df["uuid"] == uuid]
             label = uuid[0:8] # show only the first 8 characters of uuid on legend
@@ -340,6 +342,10 @@ def init_dash2(server: Flask) -> Dash:
         prevent_initial_call=True
     )
     def toggle_image_modal(clicked_data: Optional[dict], close_clicks: Optional[int], is_open: bool) -> tuple[bool, str]:
+        """
+        This function produces a popup containing GEE raster upon click events on
+        the NDVI time-series points.
+        """
         trigger_id = ctx.triggered_id
 
         # Close modal
@@ -373,43 +379,6 @@ def init_dash2(server: Flask) -> Dash:
         image_url = rgb_image.getThumbURL(vis_params)
 
         return True, image_url
-
-    # @app.callback(
-    #     Output("date-slider", "marks"),
-    #     Output("date-slider", "max"),
-    #     Output("date-slider", "value"),
-    #     Input("clicked_point_store", "data"),
-    #     prevent_initial_call=True
-    # )
-    # def update_slider(clicked_data):
-    #     if not clicked_data:
-    #         raise PreventUpdate
-
-    #     # Get dates for which image is available for provided geometry
-    #     ee_geom = convert_wkt_to_ee_geometry(clicked_data["clicked_wkt"])
-    #     start_date = clicked_data["clicked_date"]
-    #     end_date = ee.Date(start_date).advance(30, "day")
-    #     collection = (
-    #         ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
-    #         .filterBounds(ee_geom)
-    #         .filterDate(start_date, end_date)
-    #         .sort("CLOUD_COVER")
-    #     )
-    #     unique_dates = get_image_dates(collection)
-
-    #     slider_marks = {i: date for i, date in enumerate(unique_dates)}
-
-    #     try:
-    #         value_index = unique_dates.index(start_date)
-    #     except ValueError:
-    #         # pick closest date if exact one missing
-    #         clicked_date = datetime.strptime(start_date, "%Y-%m-%d")
-    #         available = [datetime.strptime(d, "%Y-%m-%d") for d in unique_dates]
-    #         closest = min(available, key=lambda d: abs(d - clicked_date))
-    #         value_index = available.index(closest)
-
-    #     return slider_marks, len(unique_dates)-1, value_index
-
 
     @app.callback(
         Output("token_store", "data"),
