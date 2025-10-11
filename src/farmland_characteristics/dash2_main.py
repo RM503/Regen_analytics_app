@@ -24,10 +24,11 @@ from auth.supabase_auth import get_supabase_client
 from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
 from db.db_utils import db_connect
 from .layout import layout
-from .utils.vi_timeseries import combined_timeseries
-from .utils.parse_contents import parse_contents
 from .utils.farm_stats import calculate_farm_stats
+from .utils.gee_images import get_rgb_image, convert_wkt_to_ee_geometry
 from .utils.isda_soil_data import main as get_soil_data
+from .utils.parse_contents import parse_contents
+from .utils.vi_timeseries import combined_timeseries
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,8 @@ def init_dash2(server: Flask) -> Dash:
         Output("farm_stats", "data"), # Stored for use in separate callback
         Output("isda_soil_data", "data"),
         Output("polygon_wkt_store", "data"),
+        Output("ndvi_timeseries", "data"),
+        Output("geometry_map_store", "data"),
         Input("upload_button", "n_clicks"),
         Input("upload-data", "contents"),
         Input("upload-data", "filename"),
@@ -103,7 +106,7 @@ def init_dash2(server: Flask) -> Dash:
         file_name: Optional[str],
         polygon_wkt: Optional[str],
         is_valid: bool
-    ) -> tuple[Figure, Figure, dict[str, Any], dict[str, Any], str]:
+    ) -> tuple[Figure, Figure, dict[str, Any], dict[str, Any], Optional[str], list[dict[str, Any]], dict[str, Any]]:
         """
         Depending on the validity check from the previous callback, the
         NDVI-NDMI time-series plots will be generated.
@@ -115,11 +118,13 @@ def init_dash2(server: Flask) -> Dash:
                                  if geometry entered through `upload` button
                (v) is_valid - geometry validation (from previous callback)
 
-        Returns: (i) Figure - NDVI time-series plot
-                 (ii) Figure - NDMI time-series plot
-                 (iii) dict - farmland stats in json
-                 (iv) dict - ISDA soil data in json
-                 (v) str - polygon wkt
+        Returns: (i) ndvi_plot - NDVI time-series plot
+                 (ii) ndmi_plot - NDMI time-series plot
+                 (iii) farm_stats - farmland stats in json
+                 (iv) soil_stats - ISDA soil data in json
+                 (v) polygon_store - polygon wkt
+                 (vi) ndvi_timeseries - NDVI time-series data in dcc.Store
+                 (vii) geometery_map_store - a dictionary mapping uuid to geometry wkt
         """
         trigger = ctx.triggered_id
 
@@ -152,21 +157,47 @@ def init_dash2(server: Flask) -> Dash:
         fig_ndvi = go.Figure()
         fig_ndmi = go.Figure()
 
+        # create a mapping for uuid and corresponding geometry
+        geometry_map = {row["uuid"]: row["geometry"] for _, row in df.iterrows()} 
         for idx, uuid in enumerate(uuid_list):
             df_uuid = df[df["uuid"] == uuid]
             label = uuid[0:8] # show only the first 8 characters of uuid on legend
+            
+            customdata = np.array([[row["uuid"], row["region"]] for _, row in df_uuid.iterrows()])
 
             fig_ndvi.add_trace(
                 go.Scatter(
-                    x=df_uuid["date"], y=df_uuid["ndvi"], mode="lines+markers", name=label, connectgaps=True,
-                    marker=dict(line=dict(color="black", width=1))
+                    x=df_uuid["date"], 
+                    y=df_uuid["ndvi"], 
+                    mode="lines+markers", 
+                    name=label, 
+                    connectgaps=True,
+                    marker=dict(line=dict(color="black", width=1)),
+                    customdata=customdata,
+                    hovertemplate=(
+                        "Date: %{x}<br>"
+                        "NDVI: %{y}<br>"
+                        "UUID: %{customdata[0]}<br>"
+                        "Region: %{customdata[1]}<extra></extra>"
+                    )
                 )
             )
 
             fig_ndmi.add_trace(
                 go.Scatter(
-                    x=df_uuid["date"], y=df_uuid["ndmi"], mode="lines+markers", name=label, connectgaps=True,
-                    marker=dict(line=dict(color="black", width=1))
+                    x=df_uuid["date"], 
+                    y=df_uuid["ndmi"],
+                    mode="lines+markers", 
+                    name=label, 
+                    connectgaps=True,
+                    marker=dict(line=dict(color="black", width=1)),
+                    customdata=customdata,
+                    hovertemplate=(
+                        "Date: %{x}<br>"
+                        "NDMI: %{y}<br>"
+                        "UUID: %{customdata[0]}<br>"
+                        "Region: %{customdata[1]}<extra></extra>"
+                    )
                 )
             )
         fig_ndvi.update_layout(
@@ -198,7 +229,7 @@ def init_dash2(server: Flask) -> Dash:
             logging.warning(f"Failed to retrieve iSDA soil data: {e}")
             df_soil_data = [] # return an empty dataframe
 
-        return fig_ndvi, fig_ndmi, df_stats, df_soil_data, df_RoI["geometry"].iloc[0]
+        return fig_ndvi, fig_ndmi, df_stats, df_soil_data, df_RoI["geometry"].iloc[0], df.to_dict("records"), geometry_map
 
     @app.callback(
         Output("farm_stats_container", "children"),
@@ -258,6 +289,96 @@ def init_dash2(server: Flask) -> Dash:
             style_header={'backgroundColor': '#111', 'color': 'white'},
             style_data={'backgroundColor': '#222', 'color': 'white'},
         )
+
+    @app.callback(
+        Output("clicked_point_store", "data"),
+        Input("ndvi_plot", "clickData"),
+        Input("ndmi_plot", "clickData"),
+        State("geometry_map_store", "data"),
+        prevent_initial_call=True,
+    )
+    def capture_click(clickData_ndvi: Optional[dict], clickData_ndmi: Optional[dict], geometry_map: dict[str, str]) -> dict[str, Any]:
+        """
+        This function retrieves data from `click events` occurring on the NDVI/NDMI plots
+        to be used for generating Sentinel-2 raster images on specific dates.
+
+        Args: (i) ndvi_plot - data from NDVI time-series plot
+              (ii) ndmi_plot - data from NDMI time-series plot
+              (iii) geometry_map_store - a dictionary mapping uuid to geometry wkt
+
+        Returns: a dictionary-valued `click data` object stored in dcc.Store
+        """
+        triggered = ctx.triggered_id
+        if triggered not in ["ndvi_plot", "ndmi_plot"]:
+            raise PreventUpdate
+
+        click = clickData_ndvi if triggered == "ndvi_plot" else clickData_ndmi
+        if not click or "points" not in click or not click["points"]:
+            raise PreventUpdate
+
+        # Get click data
+        point = click["points"][0]
+        clicked_uuid = point["customdata"][0]
+        clicked_date = str(point["x"]).split("T")[0]
+
+        if clicked_uuid not in geometry_map:
+            raise PreventUpdate
+
+        clicked_wkt = geometry_map[clicked_uuid]
+
+        return {
+            "clicked_uuid": clicked_uuid,
+            "clicked_wkt": clicked_wkt,
+            "clicked_date": clicked_date,
+            "nonce": str(uuid4()),  # optional, ensures the store updates every click
+        }
+
+    @app.callback(
+        Output("image-modal", "is_open"),
+        Output("gee-image", "src"),
+        Input("clicked_point_store", "data"),
+        Input("close-modal", "n_clicks"),
+        State("image-modal", "is_open"),
+        prevent_initial_call=True
+    )
+    def toggle_image_modal(clicked_data: Optional[dict], close_clicks: Optional[int], is_open: bool) -> tuple[bool, str]:
+        """
+        This function produces a popup containing GEE raster upon click events on
+        the NDVI time-series points.
+        """
+        trigger_id = ctx.triggered_id
+
+        # Close modal
+        if trigger_id == "close-modal":
+            return False, dash.no_update
+
+        if not clicked_data or "clicked_wkt" not in clicked_data or "clicked_date" not in clicked_data:
+            raise PreventUpdate
+
+        clicked_wkt = clicked_data["clicked_wkt"]
+        clicked_date = clicked_data["clicked_date"]
+
+        # Convert WKT to EE geometry
+        ee_geom = convert_wkt_to_ee_geometry(clicked_wkt)
+
+        # Generate RGB image
+        rgb_image = get_rgb_image(ee_geom, clicked_date)
+
+        if rgb_image is None:
+            return True, "" # No update
+
+        # Generate thumbnail URL with dummy param to avoid caching
+        vis_params = {
+            "region": ee_geom.bounds().getInfo(),
+            "scale": 10,
+            "bands": ["B4", "B3", "B2"],
+            "min": 0.0,
+            "max": 0.3
+        }
+        
+        image_url = rgb_image.getThumbURL(vis_params)
+
+        return True, image_url
 
     @app.callback(
         Output("token_store", "data"),

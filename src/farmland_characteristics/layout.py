@@ -50,6 +50,9 @@ layout = dbc.Container([
     dcc.Store(id="farm_stats"),
     dcc.Store(id="isda_soil_data"),
     dcc.Store(id="polygon_wkt_store"),
+    dcc.Store(id="ndvi_timeseries", data=[]),
+    dcc.Store(id="clicked_point_store"),
+    dcc.Store(id="geometry_map_store"),
     # Layout proper
     dbc.Row([
         html.H1("Farmland vegetation and moisture", style={"fontSize": "30px", "textAlign": "center"})
@@ -143,11 +146,19 @@ layout = dbc.Container([
                 dcc.Loading(
                     id="loading-image",
                     children=[
-                        html.Img(id="gee-image", style={"width": "100%"}),
+                        html.Img(id="gee-image", style={"width": "100%", "height": "auto"}),
                     ]
                 ),
-                html.P(id="image-date-text"),
-                dcc.Slider(id="date-slider", min=0, max=1, step=1, value=0, marks=None, tooltip={"placement": "bottom", "always_visible": True}),
+                # html.P(id="image-date-text"),
+                # dcc.Slider(
+                #     id="date-slider", 
+                #     min=0, 
+                #     max=1, 
+                #     step=1, 
+                #     value=0, 
+                #     marks=None, 
+                #     tooltip={"placement": "bottom", "always_visible": True}
+                # )
             ]),
             dbc.ModalFooter(
                 dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
