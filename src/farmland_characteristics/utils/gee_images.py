@@ -53,7 +53,7 @@ def get_rgb_image(geometry: ee.Geometry, START_DATE: str) -> ee.Image:
     at a specified 10-day window.
     """
     START_DATE = ee.Date(START_DATE)
-    NEXT_DATE = START_DATE.advance(10, "day")
+    NEXT_DATE = START_DATE.advance(30, "day")
 
     # Get Sentinel-2 image collection, filter and sort by cloud cover
     s2 = (
@@ -70,4 +70,10 @@ def get_rgb_image(geometry: ee.Geometry, START_DATE: str) -> ee.Image:
     # Select RGB bands
     rgb = image.select(["B4", "B3", "B2"]).clip(geometry)
 
-    return rgb.divide(10000)
+    """
+    Sentinel-2 surface reflectance data are stored as integers between 0 - 10000. Hence,
+    they are scaled to unity.
+    """
+    rgb_scaled = rgb.divide(10000)
+
+    return rgb_scaled

@@ -93,6 +93,7 @@ def init_dash2(server: Flask) -> Dash:
         Output("isda_soil_data", "data"),
         Output("polygon_wkt_store", "data"),
         Output("ndvi_timeseries", "data"),
+        Output("geometry_map_store", "data"),
         Input("upload_button", "n_clicks"),
         Input("upload-data", "contents"),
         Input("upload-data", "filename"),
@@ -155,14 +156,12 @@ def init_dash2(server: Flask) -> Dash:
         fig_ndvi = go.Figure()
         fig_ndmi = go.Figure()
 
+        geometry_map = {row["uuid"]: row["geometry"] for _, row in df.iterrows()} # create a mapping for uuid and corresponding geometry
         for idx, uuid in enumerate(uuid_list):
             df_uuid = df[df["uuid"] == uuid]
             label = uuid[0:8] # show only the first 8 characters of uuid on legend
             
-            customdata = np.array([
-                [row["uuid"], row["region"], row["geometry"]] 
-                for _, row in df_uuid.iterrows()
-            ])
+            customdata = np.array([[row["uuid"], row["region"]] for _, row in df_uuid.iterrows()])
 
             fig_ndvi.add_trace(
                 go.Scatter(
@@ -228,7 +227,7 @@ def init_dash2(server: Flask) -> Dash:
             logging.warning(f"Failed to retrieve iSDA soil data: {e}")
             df_soil_data = [] # return an empty dataframe
 
-        return fig_ndvi, fig_ndmi, df_stats, df_soil_data, df_RoI["geometry"].iloc[0], df.to_dict("records")
+        return fig_ndvi, fig_ndmi, df_stats, df_soil_data, df_RoI["geometry"].iloc[0], df.to_dict("records"), geometry_map
 
     @app.callback(
         Output("farm_stats_container", "children"),
@@ -290,175 +289,127 @@ def init_dash2(server: Flask) -> Dash:
         )
 
     @app.callback(
-        Output("image-modal", "is_open"),
-        Output("gee-image", "src"),
-        Output("image-date-text", "children"),
-        Output("date-slider", "max"),
-        Output("date-slider", "marks"),
-        Output("date-slider", "value"),
-        Input("ndvi_plot", "clickData"),
-        Input("ndmi_plot", "clickData"),
-        Input("close-modal", "n_clicks"),
-        State("ndvi_timeseries", "data"),
-        State("image-modal", "is_open"),
-        prevent_initial_call=True
-    )
-    def toggle_image_modal(
-        clickData_ndvi: Optional[dict],
-        clickData_ndmi: Optional[dict],
-        close_clicks: Optional[int],
-        ndvi_timeseries: dict,
-        is_open: bool
-    ) -> tuple[bool, str, str, int, dict[int, str], int]:
-
-        trigger_id = ctx.triggered_id
-
-        # Close modal
-        if trigger_id == "close-modal":
-            return False, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
-
-        # Determine which clickData to use
-        clickData = clickData_ndvi if trigger_id == "ndvi_plot" else clickData_ndmi
-        if not clickData:
-            raise dash.exceptions.PreventUpdate
-
-        point = clickData["points"][0]
-
-        # Extract the clicked polygon info
-        clicked_date = point["x"].split("T")[0]
-        clicked_uuid = point["customdata"][0]
-        clicked_wkt = point["customdata"][2]  # unique geometry for this trace
-
-        # Convert WKT to EE geometry
-        ee_geom = convert_wkt_to_ee_geometry(clicked_wkt)
-
-        # Create ImageCollection filtered by date + buffer
-        START_DATE = clicked_date
-        END_DATE = ee.Date(clicked_date).advance(10, "day")
-        collection: ee.ImageCollection = (
-            ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
-            .filterBounds(ee_geom)
-            .filterDate(START_DATE, END_DATE)
-        )
-
-        # Get available image dates
-        unique_dates = get_image_dates(collection)
-
-        # Find closest available date if exact one missing
-        try:
-            date_index = unique_dates.index(clicked_date)
-            final_date = clicked_date
-        except ValueError:
-            date_dt = datetime.strptime(clicked_date, "%Y-%m-%d")
-            available_dates = [datetime.strptime(d, "%Y-%m-%d") for d in unique_dates]
-            closest_date = min(available_dates, key=lambda d: abs(d - date_dt))
-            date_index = available_dates.index(closest_date)
-            final_date = closest_date.strftime("%Y-%m-%d")
-
-        # Get RGB image and clip to geometry
-        rgb_image = get_rgb_image(ee_geom, START_DATE)
-        rgb_image_clipped = rgb_image.clip(ee_geom)
-
-        # Generate sharp thumbnail with random dummy param to prevent caching
-        image_url = rgb_image_clipped.getThumbUrl({
-            "region": ee_geom.bounds(),
-            "scale": 10,                  # Sentinel-2 native resolution
-            "bands": ["B4", "B3", "B2"],  # True color
-            "min": 0.0,
-            "max": 0.3
-        }) + f"&dummy={uuid4()}"
-
-        # Slider marks
-        slider_marks = {i: date for i, date in enumerate(unique_dates)}
-
-        return True, image_url, f"Image for: {final_date}", len(unique_dates) - 1, slider_marks, date_index
-
-
-    @app.callback(
         Output("clicked_point_store", "data"),
         Input("ndvi_plot", "clickData"),
         Input("ndmi_plot", "clickData"),
+        State("geometry_map_store", "data"),
         prevent_initial_call=True,
     )
-    def capture_click(clickData_ndvi, clickData_ndmi):
-        """Capture which plot was clicked and store a minimal payload for the worker callback."""
-        triggered = dash.callback_context.triggered
-        if not triggered:
+    def capture_click(clickData_ndvi: Optional[dict], clickData_ndmi: Optional[dict], geometry_map: dict[str, str]) -> dict[str, Any]:
+        """
+        This function retrieves data from `click events` occurring on the NDVI/NDMI plots
+        to be used for generating Sentinel-2 raster images on specific dates.
+
+        Args: (i) ndvi_plot - data from NDVI time-series plot
+              (ii) ndmi_plot - data from NDMI time-series plot
+              (iii) geometry_map_store - a dictionary mapping uuid to geometry wkt
+
+        Returns: a dictionary-valued `click data` object stored in dcc.Store
+        """
+        triggered = ctx.triggered_id
+        if triggered not in ["ndvi_plot", "ndmi_plot"]:
             raise PreventUpdate
 
-        triggered_prop = triggered[0]["prop_id"].split(".")[0]
-        if triggered_prop == "ndvi_plot":
-            click = clickData_ndvi
-        elif triggered_prop == "ndmi_plot":
-            click = clickData_ndmi
-        else:
-            raise PreventUpdate
-
+        click = clickData_ndvi if triggered == "ndvi_plot" else clickData_ndmi
         if not click or "points" not in click or not click["points"]:
             raise PreventUpdate
 
+        # Get click data
         point = click["points"][0]
-        clicked_date = str(point["x"]).split("T")[0]
         clicked_uuid = point["customdata"][0]
-        clicked_wkt = point["customdata"][2]
+        clicked_date = str(point["x"]).split("T")[0]
 
-        # Build a short time window to look for available images (same logic you had)
-        ee_geom = convert_wkt_to_ee_geometry(clicked_wkt)
-        start_date = clicked_date
-        end_date = ee.Date(clicked_date).advance(10, "day")
-        collection = (
-            ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
-            .filterBounds(ee_geom)
-            .filterDate(start_date, end_date)
-        )
+        if clicked_uuid not in geometry_map:
+            raise PreventUpdate
 
-        unique_dates = get_image_dates(collection)  # should return list[str] like 'YYYY-MM-DD'
-        if not unique_dates:
-            # store a sentinel so the worker can render a "no images" message
-            return {"error": "no_images", "clicked_uuid": clicked_uuid, "clicked_date": clicked_date}
+        clicked_wkt = geometry_map[clicked_uuid]
 
-        # find closest available date to clicked_date
-        try:
-            date_index = unique_dates.index(clicked_date)
-            final_date = clicked_date
-        except ValueError:
-            clicked_dt = datetime.strptime(clicked_date, "%Y-%m-%d")
-            available = [datetime.strptime(d, "%Y-%m-%d") for d in unique_dates]
-            closest = min(available, key=lambda d: abs(d - clicked_dt))
-            date_index = available.index(closest)
-            final_date = closest.strftime("%Y-%m-%d")
-
-        # Return only the minimal payload required by the worker callback
         return {
             "clicked_uuid": clicked_uuid,
             "clicked_wkt": clicked_wkt,
             "clicked_date": clicked_date,
-            "final_date": final_date,
-            "date_index": date_index,
-            "unique_dates": unique_dates,
-            "nonce": str(uuid4()),
+            "nonce": str(uuid4()),  # optional, ensures the store updates every click
         }
 
     @app.callback(
-        Output("gee-image", "src", allow_duplicate=True),
-        Output("image-date-text", "children", allow_duplicate=True),
-        Input("date-slider", "value"),
-        State("polygon_wkt_store", "data"),
-        State("date-slider", "marks"),
-        prevent_initial_call=True,
+        Output("image-modal", "is_open"),
+        Output("gee-image", "src"),
+        Input("clicked_point_store", "data"),
+        Input("close-modal", "n_clicks"),
+        State("image-modal", "is_open"),
+        prevent_initial_call=True
     )
-    def update_image_on_slide(slider_value, wkt, slider_marks):
-        if wkt is None or slider_marks is None:
+    def toggle_image_modal(clicked_data: Optional[dict], close_clicks: Optional[int], is_open: bool) -> tuple[bool, str]:
+        trigger_id = ctx.triggered_id
+
+        # Close modal
+        if trigger_id == "close-modal":
+            return False, dash.no_update
+
+        if not clicked_data or "clicked_wkt" not in clicked_data or "clicked_date" not in clicked_data:
             raise PreventUpdate
 
-        date = slider_marks[str(slider_value)]
-        ee_geom = convert_wkt_to_ee_geometry(wkt)
-        rgb_image = get_rgb_image(ee_geom, date)
-        
-        vis_params = {"min": 0.0, "max": 0.3}
-        image_url = rgb_image.getThumbUrl(vis_params)
+        clicked_wkt = clicked_data["clicked_wkt"]
+        clicked_date = clicked_data["clicked_date"]
 
-        return image_url, f"Image for: {date}"
+        # Convert WKT to EE geometry
+        ee_geom = convert_wkt_to_ee_geometry(clicked_wkt)
+
+        # Generate RGB image
+        rgb_image = get_rgb_image(ee_geom, clicked_date)
+
+        if rgb_image is None:
+            return True, "" # No update
+
+        # Generate thumbnail URL with dummy param to avoid caching
+        vis_params = {
+            "region": ee_geom.bounds().getInfo(),
+            "scale": 10,
+            "bands": ["B4", "B3", "B2"],
+            "min": 0.0,
+            "max": 0.3
+        }
+        
+        image_url = rgb_image.getThumbURL(vis_params)
+
+        return True, image_url
+
+    # @app.callback(
+    #     Output("date-slider", "marks"),
+    #     Output("date-slider", "max"),
+    #     Output("date-slider", "value"),
+    #     Input("clicked_point_store", "data"),
+    #     prevent_initial_call=True
+    # )
+    # def update_slider(clicked_data):
+    #     if not clicked_data:
+    #         raise PreventUpdate
+
+    #     # Get dates for which image is available for provided geometry
+    #     ee_geom = convert_wkt_to_ee_geometry(clicked_data["clicked_wkt"])
+    #     start_date = clicked_data["clicked_date"]
+    #     end_date = ee.Date(start_date).advance(30, "day")
+    #     collection = (
+    #         ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+    #         .filterBounds(ee_geom)
+    #         .filterDate(start_date, end_date)
+    #         .sort("CLOUD_COVER")
+    #     )
+    #     unique_dates = get_image_dates(collection)
+
+    #     slider_marks = {i: date for i, date in enumerate(unique_dates)}
+
+    #     try:
+    #         value_index = unique_dates.index(start_date)
+    #     except ValueError:
+    #         # pick closest date if exact one missing
+    #         clicked_date = datetime.strptime(start_date, "%Y-%m-%d")
+    #         available = [datetime.strptime(d, "%Y-%m-%d") for d in unique_dates]
+    #         closest = min(available, key=lambda d: abs(d - clicked_date))
+    #         value_index = available.index(closest)
+
+    #     return slider_marks, len(unique_dates)-1, value_index
+
 
     @app.callback(
         Output("token_store", "data"),
