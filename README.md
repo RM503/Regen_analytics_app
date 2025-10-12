@@ -38,7 +38,7 @@ docker run --env-file .env.docker -p 8080:8080 <whatever_name_you_want:version>
 
 In the run command, the environment variables are explicitly injected using the `.env.docker` file. A prebuilt image can also be found in Docker Hub and pulled using
 ```
-docker pull rmahbub503/regen_organics_analytics_app:v1
+docker pull rmahbub503/regen_organics_analytics_app:v1.1.0
 ```
 
  After the preceding steps have been completed, the app can be run locally. The app, at the moment, uses the following APIs and services
@@ -57,7 +57,7 @@ ISDA_USERNAME=...
 ISDA_PASSWORD=...
 SUPABASE_URL=...
 ```
-An template is also found in `.env_template`. For a complete set of instructions on how to use the app, please check the `docs` folder.
+A template is also found in `.env_template`. For a complete set of instructions on how to use the app, please check the `docs` folder.
 
 ## Access through AWS Elastic Beanstalk
 
@@ -66,17 +66,17 @@ A test deployment of the app currently exists in AWS Elastic Beanstalk as well-
 
 http://regen-app-test.eba-btqhah9s.us-east-1.elasticbeanstalk.com/
 
-The app is currently being deployed from the `us-east-1` region. Hence, access from a region other than this will possibly introduce latency.
+The app is currently being deployed from the `us-east-1` region. Hence, access from a region other than this will possibly introduce latency. Since we are still at the testing phase, the deployment link may or may not work depending on various factors.
 ## How to use this app?
 
 The app is divided into multiple dashboards, each serving different purposes. This can be seen upon launching the app, taking the user to the landing page. The following contains detailed information regarding each dashboard:
-* **Initial Market Data:** This dashboard contains exploratory data analysis using initial sales and leads data provided by Regen Organics. 
 
-* **Polygon Generator:** This dashboard contains an interactive tile map which the user can leverage to explore regions of interest in Kenya, identify farms (through coordinate searches) and draw polygons around them. Once a polygon is drawn, information on it will be generated, which contain a unique identifier (uuid), area in acres and polygon geometry. Note, however, that the app will only allow a maximum of five polygons to be queried at a given time before refreshing.
-
-* **Farmland Characteristics:** User(s) can use the polygons generated in the previous dashboard to obtain NDVI-NDMI time series curves. These indices are extremely important for assessing crop/vegetation health and moisture levels. Furthermore, this dashboard also yields tabulated data that returns information on peak crop growing seasons, number of planting cycles, moisture levels and important soil characteristics.
-
-* **Farmland Statistics:** This dashboard contains analyses results obtained from the research phase of the project, containing region-aggregated statistics on various metrics that have been deemed important for the project. Importantly, this dashboard can be used as a means of comparing farmland performance of various distributor locations. Newly acquired data are also refreshed into the dashboard through <u>PostgreSQL</u> triggers.
+| **Dashboard** | **Functionalities** |
+| ------------- | -------------|
+| Initial Market Data | This dashboard contains exploratory data analysis using initial sales and leads data provided by Regen Organics. 
+| Polygon Generator | This dashboard contains an interactive tile map which the user can leverage to explore regions of interest in Kenya, identify farms (through coordinate searches) and draw polygons around them. Once a polygon is drawn, information on it will be generated, which contain a unique identifier (uuid), area in acres and polygon geometry. Note, however, that the app will only allow a maximum of five polygons to be queried at a given time before refreshing.
+| Farmland Characteristics | User(s) can use the polygons generated in the previous dashboard to obtain NDVI-NDMI time series curves. These indices are extremely important for assessing crop/vegetation health and moisture levels. Furthermore, this dashboard also yields tabulated data that returns information on peak crop growing seasons, number of planting cycles, moisture levels and important soil characteristics. Furthermore, Sentinel-2 raster images of queried polygons can be retrieved at required dates by clicking on the NDVI time-series points.
+| Farmland Statistics | This dashboard contains analyses results obtained from the research phase of the project, containing region-aggregated statistics on various metrics that have been deemed important for the project. Importantly, this dashboard can be used as a means of comparing farmland performance of various distributor locations. Newly acquired data are also refreshed into the dashboard through <u>PostgreSQL</u> triggers. |
 
 As noted earlier, `INSERT` operations can only be performed by authenticated users. Currently, `UPDATE` and `DELETE` operations can only be performed by users with administrative access to Supabase.
 
