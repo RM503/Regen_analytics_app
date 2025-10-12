@@ -336,12 +336,13 @@ def init_dash2(server: Flask) -> Dash:
     @app.callback(
         Output("image-modal", "is_open"),
         Output("gee-image", "src"),
+        Output("modal_title", "children"),
         Input("clicked_point_store", "data"),
         Input("close-modal", "n_clicks"),
         State("image-modal", "is_open"),
         prevent_initial_call=True
     )
-    def toggle_image_modal(clicked_data: Optional[dict], close_clicks: Optional[int], is_open: bool) -> tuple[bool, str]:
+    def toggle_image_modal(clicked_data: Optional[dict], close_clicks: Optional[int], is_open: bool) -> tuple[bool, str, str]:
         """
         This function produces a popup containing GEE raster upon click events on
         the NDVI time-series points.
@@ -350,7 +351,7 @@ def init_dash2(server: Flask) -> Dash:
 
         # Close modal
         if trigger_id == "close-modal":
-            return False, dash.no_update
+            return False, dash.no_update, dash.no_update
 
         if not clicked_data or "clicked_wkt" not in clicked_data or "clicked_date" not in clicked_data:
             raise PreventUpdate
@@ -365,7 +366,7 @@ def init_dash2(server: Flask) -> Dash:
         rgb_image = get_rgb_image(ee_geom, clicked_date)
 
         if rgb_image is None:
-            return True, "" # No update
+            return True, "", "❌ No satellite image available for this date."
 
         # Generate thumbnail URL with dummy param to avoid caching
         vis_params = {
@@ -373,12 +374,14 @@ def init_dash2(server: Flask) -> Dash:
             "scale": 10,
             "bands": ["B4", "B3", "B2"],
             "min": 0.0,
-            "max": 0.3
+            "max": 0.4,
+            "gamma": 1.3
         }
         
         image_url = rgb_image.getThumbURL(vis_params)
+        modal_title = f"Satellite RGB Image on {clicked_date}"
 
-        return True, image_url
+        return True, image_url, modal_title
 
     @app.callback(
         Output("token_store", "data"),

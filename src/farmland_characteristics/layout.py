@@ -141,7 +141,9 @@ layout = dbc.Container([
     html.Br(),
     dbc.Modal(
         [
-            dbc.ModalHeader(dbc.ModalTitle("Satellite RGB Image")),
+            dbc.ModalHeader(
+                dbc.ModalTitle(id="modal_title", children="Satellite RGB Image")
+            ),
             dbc.ModalBody([
                 dcc.Loading(
                     id="loading-image",
