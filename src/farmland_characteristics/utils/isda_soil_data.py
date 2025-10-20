@@ -66,6 +66,7 @@ async def get_access_token(session: ClientSession) -> str:
 
     async with session.post(url, data=payload) as response:
         data = await response.json()
+        logging.info(data)
         return data.get("access_token")
 
 async def fetch_soil_property_data(
@@ -90,6 +91,7 @@ async def fetch_soil_property_data(
     """
     url = f"{BASE_URL}/isdasoil/v2/soilproperty?lat={lat}&lon={lon}&property={prop}&depth=0-20"
     headers = {"Authorization": f"Bearer {access_token}"}
+    logging.info(f"Headers: {headers}")
 
     async with session.get(url, headers=headers) as response:
         response.raise_for_status() # Obtain status of HTTP request
