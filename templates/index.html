@@ -108,17 +108,6 @@
     </footer>
 </body>
 <!-- JavaScript to hide error/success message after 5 seconds -->
-<script>
-    setTimeout(() => {
-      const error = document.querySelector('.error-message');
-      if (error) error.style.display = "none";
-    }, 5000);
-</script>
-<script>
-    setTimeout(() => {
-      const success = document.querySelector('.success-message');
-      if (success) success.style.display = "none";
-    }, 5000);
-</script>
+<script src="{{ url_for('static', filename='scripts/js/landing_page_login_messages.js') }}"></script>
 
 </html>
