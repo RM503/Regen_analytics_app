@@ -24,7 +24,8 @@ from auth.supabase_auth import get_supabase_client
 from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
 from db.db_utils import db_connect
 from .layout import layout
-from .utils.farm_stats import calculate_farm_stats
+#from .utils.farm_stats import calculate_farm_stats
+from .utils.farm_stats import FarmDataProcessor, FarmStatsCalculator
 from .utils.gee_images import get_rgb_image, convert_wkt_to_ee_geometry
 from .utils.isda_soil_data import main as get_soil_data
 from .utils.parse_contents import parse_contents
@@ -220,7 +221,11 @@ def init_dash2(server: Flask) -> Dash:
         )
 
         # Calculate farmland stats and retrieve iSDA soil data
-        df_stats = calculate_farm_stats(df)
+        #df_stats = calculate_farm_stats(df)
+        preprocessor = FarmDataProcessor()
+
+        farm_stats = FarmStatsCalculator(preprocessor)
+        df_stats = farm_stats.calculate_stats(df)
 
         # if iSDA API fails to return respose
         try:
@@ -278,7 +283,7 @@ def init_dash2(server: Flask) -> Dash:
         Returns: iSDA soil Dash data table
         """
         if not df_soildata:
-            dbc.Alert("Soil data failed to be retrieved", color="danger")
+            return dbc.Alert("Soil data failed to be retrieved", color="danger")
 
         return dash_table.DataTable(
             data=df_soildata,
