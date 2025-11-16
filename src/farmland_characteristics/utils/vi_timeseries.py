@@ -154,7 +154,7 @@ def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
     df = df.drop_duplicates(subset="date", keep="first")
 
     # Apply preprocessing steps
-    df_cleaned = clean_vi_series(df, vi, resample_date=False)
+    df_cleaned = clean_vi_series(df, vi)
  
     df_cleaned.insert(2, "geometry", shape(RoI.getInfo()).wkt) # store geometry in WKt format
 

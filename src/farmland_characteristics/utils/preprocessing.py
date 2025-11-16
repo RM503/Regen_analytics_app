@@ -61,10 +61,10 @@ def find_outliers(col: pd.Series) -> NDArray[np.float64]:
 
 def clean_vi_series(
         df: pd.DataFrame,
-        vi: str,
-        resample_date: bool=True
+        vi: str
     ) -> pd.DataFrame:
     if not pd.api.types.is_datetime64_any_dtype(df["date"]):
+        # Ensure `date` column is actually of date type
         df["date"] = pd.to_datetime(df["date"])
 
     # Fill in NaN with interpolate, ffill and bfill
@@ -73,12 +73,7 @@ def clean_vi_series(
             .bfill()
             .ffill()
         )
-
-    WINDOW_SIZE = 7
-    POLY_ORDER = 3
-
-    df[vi] = savgol_filter(df[vi], WINDOW_SIZE, POLY_ORDER)
-
+    
     # Find outliers and bfill the values
     df["outlier"] = find_outliers(df[vi])
     df.loc[df["outlier"] == -1, vi] = np.nan
@@ -87,12 +82,20 @@ def clean_vi_series(
             df.bfill()
               .drop(columns="outlier")
         )
+    
+    # Apply Savitzky-Golay filter
+
+    WINDOW_SIZE = 7
+    POLY_ORDER = 3
+    
+    if len(df_clean) >= WINDOW_SIZE:
+        df_clean[vi] = savgol_filter(df_clean[vi], WINDOW_SIZE, POLY_ORDER)
+    else:
+        logging.warning("Skipping Savitzky–Golay filter due to short time series.")
 
     # This VI indices are between -1 to 1. More extreme values are capped appropriately.
 
-    df_clean.loc[df_clean[vi] < -1.0, vi] = -1.0
-
-    df_clean.loc[df_clean[vi] > 1.0, vi] = 1.0
+    df_clean[vi] = df_clean[vi].clip(-1.0, 1.0)
 
     # Check if cleaned data conforms to required schema
     try:
@@ -103,3 +106,4 @@ def clean_vi_series(
         return df_clean
     except pa.errors.SchemaErrors as e:
          logging.error(f"Data validation failed: {e}")
+         raise
