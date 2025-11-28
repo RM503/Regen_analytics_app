@@ -179,22 +179,15 @@ def init_dash3(server: Flask) -> Dash:
         if map_indicator == "ndmi_max":
             query = """
                 SELECT
-                    a.uuid,
-                    u.region,
-                    u.geometry,
-                    a.ndvi_max,
-                    a.ndmi_max
-                FROM (
-                    SELECT
-                        uuid,
-                        AVG(ndvi_max) AS ndvi_max,
-                        AVG(ndmi_max) AS ndmi_max
-                    FROM peakvidistribution
-                    GROUP BY uuid, region
-                ) a
-                JOIN farmpolygons u
-                    ON a.uuid = u.uuid
-                WHERE u.region = %(region)s;
+                    p.uuid,
+                    f.region,
+                    f.geometry,
+                    AVG(p.ndvi_max) AS ndvi_max,
+                    AVG(p.ndmi_max) AS ndmi_max
+                FROM peakvidistribution p
+                INNER JOIN farmpolygons f ON p.uuid = f.uuid
+                WHERE f.region = %(region)s
+                GROUP BY p.uuid, f.region, f.geometry;
             """
         else:
             query = """
