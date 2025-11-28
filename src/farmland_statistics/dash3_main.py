@@ -190,9 +190,42 @@ def init_dash3(server: Flask) -> Dash:
                 GROUP BY p.uuid, f.region, f.geometry;
             """
         else:
+            # query = """
+            #     SELECT * FROM soildata WHERE region = %(region)s;
+            # """
+            ALLOWED_PROPERTIES = [
+                "bulk_density",
+                "calcium_extractable",
+                "carbon_organic",
+                "carbon_total",
+                "clay_content",
+                "iron_extractable",
+                "magnesium_extractable",
+                "nitrogen_total",
+                "ph",
+                "phosphorous_extractable",
+                "potassium_extractable",
+                "sand_content",
+                "silt_content",
+                "stone_content",
+                "sulphur_extractable",
+                "texture_class",
+                "zinc_extractable"
+            ]
+
+            if map_indicator not in ALLOWED_PROPERTIES:
+                logging.error(f"Invalid map indicator: {map_indicator}")
+                raise ValueError(f"Invalid map indicator: {map_indicator}")
+
             query = """
-                SELECT * FROM soildata WHERE region = %(region)s;
-            """
+                SELECT
+                    uuid,
+                    region,
+                    geometry,
+                    {indicator}
+                FROM soildata
+                WHERE region = %(region)s;
+            """.format(indicator=map_indicator)
 
         # Read queried data into a geodataframe using `read_postgis()` method
         gdf = gpd.read_postgis(query, engine, geom_col="geometry", params={"region": location})
