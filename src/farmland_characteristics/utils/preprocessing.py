@@ -85,7 +85,7 @@ def clean_vi_series(
     
     # Apply Savitzky-Golay filter
 
-    WINDOW_SIZE = 7
+    WINDOW_SIZE = 15
     POLY_ORDER = 3
     
     if len(df_clean) >= WINDOW_SIZE:

@@ -6,3 +6,5 @@ Dockerfile.dev
 .env
 .env.docker 
 __pycache__
+
+notebooks
