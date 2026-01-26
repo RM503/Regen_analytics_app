@@ -82,6 +82,10 @@ The app is divided into multiple dashboards, each serving different purposes. Th
 
 As noted earlier, `INSERT` operations can only be performed by authenticated users. Currently, `UPDATE` and `DELETE` operations can only be performed by users with administrative access to Supabase.
 
+For more information on app usage and recommended workflow, please refer to the attached video
+
+[![Regen Organics Analytics App Demo](https://img.youtube.com/vi/c0UN69OeOIo/maxresdefault.jpg)](https://www.youtube.com/watch?v=c0UN69OeOIo)
+
 ## How to contribute
 
 If you are interested in contributing to the app to extend/improve its design, functionality or scope, please do the following:
