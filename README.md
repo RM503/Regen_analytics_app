@@ -1,6 +1,8 @@
-![Static Badge](https://img.shields.io/badge/version-1.1.0-blue)
+![Static Badge](https://img.shields.io/badge/version-1.1.1-blue)
 ![License](https://img.shields.io/github/license/RM503/Regen_analytics_app)
-![AWS](https://img.shields.io/badge/AWS-Elastic%20Beanstalk-orange?logo=amazonaws)
+![Docker Pulls](https://img.shields.io/docker/pulls/rmahbub503/regen_organics_analytics_app)
+![Docker Image Size](https://img.shields.io/docker/image-size/rmahbub503/regen_organics_analytics_app)
+![Docker Stars](https://img.shields.io/docker/stars/rmahbub503/regen_organics_analytics_app)
 
 # Regen Organics analytics app
 ## What is this app for?
@@ -38,7 +40,7 @@ docker run --env-file .env.docker -p 8080:8080 <whatever_name_you_want:version>
 
 In the run command, the environment variables are explicitly injected using the `.env.docker` file. A prebuilt image can also be found in Docker Hub and pulled using
 ```
-docker pull rmahbub503/regen_organics_analytics_app:v1.1.0
+docker pull rmahbub503/regen_organics_analytics_app:v1.1.1
 ```
 
  After the preceding steps have been completed, the app can be run locally. The app, at the moment, uses the following APIs and services
@@ -59,14 +61,14 @@ SUPABASE_URL=...
 ```
 A template is also found in `.env_template`. For a complete set of instructions on how to use the app, please check the `docs` folder.
 
-## Access through AWS Elastic Beanstalk
+<!-- ## Access through AWS Elastic Beanstalk
 
 A test deployment of the app currently exists in AWS Elastic Beanstalk as well-
 
 
 http://regen-app-test.eba-btqhah9s.us-east-1.elasticbeanstalk.com/
 
-The app is currently being deployed from the `us-east-1` region. Hence, access from a region other than this will possibly introduce latency. Since we are still at the testing phase, the deployment link may or may not work depending on various factors.
+The app is currently being deployed from the `us-east-1` region. Hence, access from a region other than this will possibly introduce latency. Since we are still at the testing phase, the deployment link may or may not work depending on various factors. -->
 ## How to use this app?
 
 The app is divided into multiple dashboards, each serving different purposes. This can be seen upon launching the app, taking the user to the landing page. The following contains detailed information regarding each dashboard:
@@ -90,4 +92,4 @@ If you are interested in contributing to the app to extend/improve its design, f
 
 ## Contact
 
-For questions or suggestions regarding the app, please contact Rafid Mahbub (rmahbub503@gmail.com) or Sheldon Waugh (waughsh@gmail.com).
+For questions or suggestions regarding the app, please contact Rafid Mahbub (rmahbub503@gmail.com), Sheldon Waugh (waughsh@gmail.com) or Ratri Maria (ratri.maria@datakind.org).
