@@ -64,7 +64,6 @@ def clean_vi_series(
         vi: str
     ) -> pd.DataFrame:
     if not pd.api.types.is_datetime64_any_dtype(df["date"]):
-        # Ensure `date` column is actually of date type
         df["date"] = pd.to_datetime(df["date"])
 
     # Fill in NaN with interpolate, ffill and bfill
@@ -74,17 +73,43 @@ def clean_vi_series(
             .ffill()
         )
     
+    # **ADD LOGGING HERE**
+    logging.info(f"Before outlier detection - NaN: {df[vi].isnull().sum()}, "
+                 f"inf: {np.isinf(df[vi]).sum()}, "
+                 f"min: {df[vi].min()}, max: {df[vi].max()}")
+    
     # Find outliers and bfill the values
     df["outlier"] = find_outliers(df[vi])
+    
+    # **ADD LOGGING HERE**
+    outlier_count = (df["outlier"] == -1).sum()
+    logging.info(f"Outliers detected: {outlier_count}/{len(df)} ({100*outlier_count/len(df):.1f}%)")
+    
     df.loc[df["outlier"] == -1, vi] = np.nan
 
     df_clean = (
             df.bfill()
+              .ffill()
               .drop(columns="outlier")
         )
     
+    # **ADD LOGGING HERE**
+    logging.info(f"After bfill/ffill - NaN: {df_clean[vi].isnull().sum()}, "
+                 f"inf: {np.isinf(df_clean[vi]).sum()}")
+    
+    # **ADD THIS CHECK**
+    if df_clean[vi].isnull().any() or np.isinf(df_clean[vi]).any():
+        logging.error(f"Still have invalid values! NaN indices: {df_clean[df_clean[vi].isnull()].index.tolist()}")
+        logging.error(f"Data sample: {df_clean[[vi]].head(20)}")
+        # Replace remaining invalid values
+        df_clean[vi] = df_clean[vi].replace([np.inf, -np.inf], np.nan)
+        df_clean[vi] = df_clean[vi].interpolate(method="linear").bfill().ffill()
+        
+        # Last resort: use median
+        if df_clean[vi].isnull().any():
+            df_clean[vi] = df_clean[vi].fillna(df_clean[vi].median())
+    
     # Apply Savitzky-Golay filter
-
     WINDOW_SIZE = 15
     POLY_ORDER = 3
     
@@ -93,11 +118,8 @@ def clean_vi_series(
     else:
         logging.warning("Skipping Savitzky–Golay filter due to short time series.")
 
-    # This VI indices are between -1 to 1. More extreme values are capped appropriately.
-
     df_clean[vi] = df_clean[vi].clip(-1.0, 1.0)
 
-    # Check if cleaned data conforms to required schema
     try:
         validator = VIDataValidation(vi)
         validator.validate(df_clean)
