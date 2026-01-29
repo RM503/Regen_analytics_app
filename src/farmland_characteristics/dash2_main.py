@@ -25,11 +25,11 @@ from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
 from db.db_utils import db_connect
 from .layout import layout
 #from .utils.farm_stats import calculate_farm_stats
-from .utils.farm_stats import FarmDataProcessor, FarmStatsCalculator
-from .utils.gee_images import get_rgb_image, convert_wkt_to_ee_geometry
-from .utils.isda_soil_data import main as get_soil_data
-from .utils.parse_contents import parse_contents
-from .utils.vi_timeseries import combined_timeseries
+from ..utils.farm_stats import FarmDataProcessor, FarmStatsCalculator
+from ..utils.gee_images import get_rgb_image, convert_wkt_to_ee_geometry
+from ..utils.isda_soil_data import main as get_soil_data
+from ..utils.parse_contents import parse_contents
+from ..utils.vi_timeseries import combined_timeseries
 
 logger = logging.getLogger(__name__)
 
