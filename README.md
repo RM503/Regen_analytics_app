@@ -4,10 +4,10 @@
 ![Docker Image Size](https://img.shields.io/docker/image-size/rmahbub503/regen_organics_analytics_app)
 ![Docker Stars](https://img.shields.io/docker/stars/rmahbub503/regen_organics_analytics_app)
 
-<p align="center>
-    <img src="logos/datakind_logo.png" alt="DK" style="width:75%; height:auto;">
-    &nbsp;&nbsp;&nbsp;&nbsp;
-    <img src="logos/regen_logo.png" alt="RO" style="width:75%; height:auto;">
+<p align="center">
+    <img src="logos/datakind_logo.png" alt="DK" style="width:15%; height:auto;">
+    &nbsp;&nbsp;&nbsp;&nbsp
+    <img src="logos/regen_logo.png" alt="RO" style="width:70%; height:auto;">
 </p>
 
 # Regen Organics analytics app
