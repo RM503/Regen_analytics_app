@@ -4,6 +4,9 @@
 ![Docker Image Size](https://img.shields.io/docker/image-size/rmahbub503/regen_organics_analytics_app)
 ![Docker Stars](https://img.shields.io/docker/stars/rmahbub503/regen_organics_analytics_app)
 
+<img src="logos/datakind_logo.png" alt="DK" style="width:20%; height:auto;">
+<img src="logos/regen_logo.png" alt="RO" style="width:70%; height:auto;">
+
 # Regen Organics analytics app
 ## What is this app for?
 This is an analytics web application designed by a group of volunteers at [DataKind](https://www.datakind.org/) for [Regen Organics](https://www.regenorganics.co/), serving two primary purposes:
