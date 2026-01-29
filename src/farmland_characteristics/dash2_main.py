@@ -474,7 +474,7 @@ def init_dash2(server: Flask) -> Dash:
         State("isda_soil_data", "data"),
         prevent_initial_call=True
     )
-    def insert_soildata(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, str, bool]:
+    def insert_soildata(n_clicks: int, token: str, stored_data: list[dict[str, Any]]) -> tuple[str, str, bool]:
         """
         This function INSERTs the iSDA soil data to the `soildata` table in
         the Supabase database.
