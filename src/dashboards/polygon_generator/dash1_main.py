@@ -23,7 +23,7 @@ from auth.supabase_auth import get_supabase_client
 from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
 from db.db_utils import db_connect
 from .layout import layout
-from ..region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
+from ...utils.region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
 
 logger = logging.getLogger(__name__)
 

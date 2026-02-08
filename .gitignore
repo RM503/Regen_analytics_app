@@ -22,10 +22,10 @@ config/
 
 migrations
 
-src/initial_market_data/plots_json
-src/polygon_generator/region_bboxes.geojson
-src/farmland_characteristics/dash2_test.py
-src/farmland_characteristics/test_data
+src/dashboards/initial_market_data/plots_json
+src/dashboards/polygon_generator/region_bboxes.geojson
+src/dashboards/farmland_characteristics/dash2_test.py
+src/dashboards/farmland_characteristics/test_data
 
 db/data
 

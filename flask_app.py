@@ -20,10 +20,10 @@ init_config() # noqa: E402
 
 from auth.supabase_auth import supabase_auth
 
-from src.initial_market_data.dash0_main import init_dash0
-from src.polygon_generator.dash1_main import init_dash1
-from src.farmland_characteristics.dash2_main import init_dash2
-from src.farmland_statistics.dash3_main import init_dash3
+from src.dashboards.initial_market_data.dash0_main import init_dash0
+from src.dashboards.polygon_generator.dash1_main import init_dash1
+from src.dashboards.farmland_characteristics.dash2_main import init_dash2
+from src.dashboards.farmland_statistics.dash3_main import init_dash3
 
 from logging_config import setup_logging
 
