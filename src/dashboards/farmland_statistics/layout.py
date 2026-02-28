@@ -2,7 +2,7 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 
-from ..region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
+from ...utils.region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
 
 regions = region_bboxes_to_geojson()
 

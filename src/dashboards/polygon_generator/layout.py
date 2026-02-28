@@ -5,10 +5,10 @@ import dash_leaflet as dl
 import geopandas as gpd 
 import json
 
-from ..region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
+from ...utils.region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
 
 # Import administrative boundaries shapefile and convert to geojson
-gdf = gpd.read_file("src/polygon_generator/shapefiles/ken_adm_iebc_20191031_shp/ken_admbnda_adm2_iebc_20191031.shp")
+gdf = gpd.read_file("src/dashboards/polygon_generator/shapefiles/ken_adm_iebc_20191031_shp/ken_admbnda_adm2_iebc_20191031.shp")
 if gdf.crs and gdf.crs.to_epsg() != 4326:
     gdf = gdf.to_crs(epsg=4326)
 

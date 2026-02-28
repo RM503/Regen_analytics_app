@@ -8,13 +8,12 @@ import geopandas as gpd
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure
-from shapely.geometry import shape
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlmodel import create_engine
 
 from .layout import layout
-from ..region_bboxes import region_bboxes_to_geojson
+from ...utils.region_bboxes import region_bboxes_to_geojson
 
 logger = logging.getLogger(__name__)
 

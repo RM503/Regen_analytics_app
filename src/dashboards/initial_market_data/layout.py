@@ -2,8 +2,8 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc 
 import plotly.io as pio
 
-new_custs_time_region = pio.read_json("src/initial_market_data/plots_json/new_custs_time_region.json")
-total_sales_vol_time_region = pio.read_json("src/initial_market_data/plots_json/total_sales_vol_time_region.json")
+new_custs_time_region = pio.read_json("src/dashboards/initial_market_data/plots_json/new_custs_time_region.json")
+total_sales_vol_time_region = pio.read_json("src/dashboards/initial_market_data/plots_json/total_sales_vol_time_region.json")
 
 layout = dbc.Container([
     dbc.Row([
