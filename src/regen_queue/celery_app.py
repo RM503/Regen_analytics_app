@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def make_celery() -> Celery:
-    broker_url = os.getenv["CELERY_BROKER_URL"]
+    broker_url = os.getenv("CELERY_BROKER_URL")
     backend_url = os.getenv("CELERY_RESULT_BACKEND")
 
     app = Celery(

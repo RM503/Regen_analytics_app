@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Hashable
 
 import numpy as np
 import pandas as pd
@@ -59,15 +59,16 @@ class FarmStatsCalculator:
     def __init__(self, processor: FarmDataProcessor):
         self.processor = processor
 
-    def _high_ndmi_days(self, df: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def _high_ndmi_days(df: pd.DataFrame) -> pd.DataFrame:
         """
         This function generates an aggregate of high NDMI days
         for each polygon. 
         """
-        NDMI_THRESHOLD = 0.38
+        ndmi_threshold = 0.38
 
         # Filter out high-NDMI farms based on threshold
-        df_high_ndmi = df[df["ndmi"] > NDMI_THRESHOLD].copy()
+        df_high_ndmi = df[df["ndmi"] > ndmi_threshold].copy()
 
         """ 
         In order to be more precise about water-stress levels of farms, we
@@ -84,8 +85,9 @@ class FarmStatsCalculator:
         )
 
         return df_high_ndmi_days
-    
-    def _ndvi_peaks_per_farm(self, df: pd.DataFrame) -> pd.DataFrame:
+
+    @staticmethod
+    def _ndvi_peaks_per_farm(df: pd.DataFrame) -> pd.DataFrame:
         """
         This function groups NDVI time-series data by uuid and applies peak-finding algorithm
         in order to identify NDVI peaks occurring in each identified farm.
@@ -163,7 +165,7 @@ class FarmStatsCalculator:
 
         return df_merged
 
-    def calculate_stats(self, df: pd.DataFrame) -> dict[str, dict[str, Any]]:
+    def calculate_stats(self, df: pd.DataFrame) -> dict[str, list[dict[Hashable, Any]] | Any]:
         df_processed = self.processor.preprocess(df)
         
         df_list = []
@@ -183,7 +185,7 @@ class FarmStatsCalculator:
             group["peak"] = np.isin(group.index, peaks).astype(int)
             df_list.append(group)
 
-        df_concat = pd.concat(df_list, ignore_index=True)
+        df_concat: pd.DataFrame = pd.concat(df_list, ignore_index=True)
         
         df_concat["year"] = df_concat["date"].dt.year
         df_concat["month"] = df_concat["date"].dt.month

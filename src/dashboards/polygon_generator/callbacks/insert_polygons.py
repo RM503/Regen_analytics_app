@@ -1,5 +1,5 @@
-import datetime
 import logging
+from datetime import datetime
 from typing import Any
 
 from dash import Input, Output, State
@@ -11,13 +11,13 @@ from db.db_utils import db_connect
 logger = logging.getLogger(__name__)
 
 if USE_LOCAL_DB:
-    logging.info(
+    logger.info(
         f"Running in LOCAL mode — connecting to PostgreSQL at "
         f"{LOCAL_DB_CONFIG['host']}:{LOCAL_DB_CONFIG['port']}, "
         f"database '{LOCAL_DB_CONFIG['database']}'."
     )
 else:
-    logging.info("Running in SUPABASE mode.")
+    logger.info("Running in SUPABASE mode.")
 
 def register(app):
     @app.callback(
@@ -41,7 +41,7 @@ def register(app):
 
         Returns: Status message of the insert operation
         """
-        TABLE_NAME = "farmpolygons"
+        table_name = "farmpolygons"
         try:
 
             if USE_LOCAL_DB:
@@ -55,7 +55,7 @@ def register(app):
                         placeholders = ', '.join(['%s'] * len(row))
                         values = tuple(row.values())
 
-                        query = f"INSERT INTO {TABLE_NAME} ({columns}) VALUES ({placeholders})"
+                        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
                         cursor.execute(query, values)
 
                     logger.info(f"Inserted {len(stored_data)} polygons successfully.")
@@ -67,7 +67,7 @@ def register(app):
                 for item in stored_data:
                     item["created_at"] = datetime.now().isoformat()
 
-                response = client.table(TABLE_NAME).insert(stored_data).execute()
+                response = client.table(table_name).insert(stored_data).execute()
 
                 if response.data:
                     logger.info(f"Inserted {len(response.data)} polygons successfully.")

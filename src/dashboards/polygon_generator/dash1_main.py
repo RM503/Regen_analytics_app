@@ -20,7 +20,6 @@ from .layout import layout
 
 logger = logging.getLogger(__name__)
 
-
 def init_dash1(server: Flask) -> Dash:
     app = Dash(
         __name__,
