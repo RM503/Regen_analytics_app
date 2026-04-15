@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from aiohttp import ClientError
+from celery.result import AsyncResult
 from dash import Input, Output, State, ctx
 from dash.exceptions import PreventUpdate
 from plotly.graph_objects import Figure

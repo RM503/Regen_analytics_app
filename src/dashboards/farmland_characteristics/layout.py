@@ -53,6 +53,11 @@ layout = dbc.Container([
     dcc.Store(id="ndvi_timeseries", data=[]),
     dcc.Store(id="clicked_point_store"),
     dcc.Store(id="geometry_map_store"),
+    # Polling stores
+    dcc.Store(id="vi_task_store"),
+    dcc.Store(id="vi_roi_store"),
+    dcc.Interval(id="vi_task_poll", interval=2000, disabled=True, n_intervals=0),
+    html.Div(id="vi_task_status"),
     # Layout proper
     dbc.Row([
         html.H1("Farmland vegetation and moisture", style={"fontSize": "30px", "textAlign": "center"})
