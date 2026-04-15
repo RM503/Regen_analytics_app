@@ -1,18 +1,26 @@
-import logging
+from __future__ import annotations
+
+from dataclasses import dataclass
 from typing import Any, Hashable
 
 import numpy as np
 import pandas as pd
 from scipy.signal import savgol_filter, find_peaks
 
-logger = logging.getLogger(__name__)
+from ..utils.logging_config import get_logger
 
+logger = get_logger(__name__)
+
+@dataclass(frozen=True)
 class FarmDataProcessor:
-    # Class containing methods required for preprocessing VI time-series data
-    def __init__(self, window_size: int=7, poly_order: int=3):
-        # Initialize parameters for Savitzky-Golay filter
-        self.window_size = window_size
-        self.poly_order = poly_order
+    window_size: int = 7
+    poly_order: int = 3
+
+    def __post_init__(self):
+        if 0 < self.window_size <= 1 or self.window_size < 0:
+            raise ValueError("window_size must be between 0 and 1 and positive integer.")
+        if self.poly_order < 0:
+            raise ValueError("poly_order must be positive integer.")
 
     def _safe_smoothing(self, s: pd.Series) -> pd.Series:
         """
@@ -37,7 +45,7 @@ class FarmDataProcessor:
             if not pd.Series(required_cols).isin(df.columns).all():
                 raise ValueError("Required columns are not present in the dataframe.")
         except ValueError as e:
-            logging.error(e)
+            logger.error(e)
         
         if not pd.api.types.is_datetime64_any_dtype(df["date"]):
             df["date"] = pd.to_datetime(df["date"])
@@ -53,22 +61,25 @@ class FarmDataProcessor:
         df["ndmi"] = df.groupby("uuid")["ndmi"].transform(self._safe_smoothing)
 
         return df 
-    
-class FarmStatsCalculator:
-    # Class that contains methods for performing farm statistics calculations.
-    def __init__(self, processor: FarmDataProcessor):
-        self.processor = processor
 
-    @staticmethod
-    def _high_ndmi_days(df: pd.DataFrame) -> pd.DataFrame:
+@dataclass(frozen=True)
+class FarmStatsCalculator:
+    processor: FarmDataProcessor
+    ndmi_threshold: float = 0.38
+
+    # peak-finding algorithm parameters
+    height: tuple[float, float] = (0.4, 1.0)
+    prominence: float = 0.20
+    distance: float = 10
+
+    def _high_ndmi_days(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         This function generates an aggregate of high NDMI days
         for each polygon. 
         """
-        ndmi_threshold = 0.38
 
         # Filter out high-NDMI farms based on threshold
-        df_high_ndmi = df[df["ndmi"] > ndmi_threshold].copy()
+        df_high_ndmi = df[df["ndmi"] > self.ndmi_threshold].copy()
 
         """ 
         In order to be more precise about water-stress levels of farms, we
@@ -86,8 +97,7 @@ class FarmStatsCalculator:
 
         return df_high_ndmi_days
 
-    @staticmethod
-    def _ndvi_peaks_per_farm(df: pd.DataFrame) -> pd.DataFrame:
+    def _ndvi_peaks_per_farm(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         This function groups NDVI time-series data by uuid and applies peak-finding algorithm
         in order to identify NDVI peaks occurring in each identified farm.
@@ -99,9 +109,9 @@ class FarmStatsCalculator:
             group = group.reset_index(drop=True)
             peaks, _ = find_peaks(
                 group["ndvi"].values,
-                height=(0.4, 1.0),
-                prominence=0.20,
-                distance=10
+                height=self.height,
+                prominence=self.prominence,
+                distance=self.distance
             )
 
             # Checks which group indices are present in peaks; converts to binary
