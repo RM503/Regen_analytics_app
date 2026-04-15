@@ -1,7 +1,7 @@
 # Obtains NDVI and NDMI time-series from queried polygons
 from datetime import date
 import logging
-import os 
+import os
 from uuid import uuid4
 
 from dateutil.relativedelta import relativedelta
@@ -11,7 +11,7 @@ import pandas as pd
 from shapely import wkt
 from shapely.geometry import shape
 
-from .preprocessing import clean_vi_series
+from utils.preprocessing import clean_vi_series
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class VIIndex:
     The various functions are packaged as static methods.
     """
     @staticmethod
-    def add_NDVI(img: ee.Image) -> ee.Image:
+    def add_ndvi(img: ee.Image) -> ee.Image:
         """ 
         This function takes an ee.Image object and adds an NDVI band to it.
 
@@ -39,7 +39,7 @@ class VIIndex:
         return img.addBands([ndvi])
     
     @staticmethod
-    def add_NDMI(img: ee.Image) -> ee.Image:
+    def add_ndmi(img: ee.Image) -> ee.Image:
         """ 
         This function takes an ee.Image object and adds an NDWI band to it. This uses
         the following NDWI convention
@@ -83,7 +83,7 @@ def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
 
     return img.updateMask(mask)
 
-def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
+def get_vi_timeseries(roi: str, vi: str) -> pd.DataFrame:
     """
     This function generates NDVI and NDMI time-series data from a polygon geometry
     provided by the user. The geometry data is provided in the WKT format.
@@ -95,11 +95,11 @@ def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
     """
     
     # Polygons are passed as wkt strings; need to be converted to ee.Geometry objects
-    if not isinstance(RoI, str):
-        RoI = str(RoI)
+    if not isinstance(roi, str):
+        roi = str(roi)
 
-    shapely_polygon = wkt.loads(RoI)
-    RoI = ee.Geometry.Polygon(shapely_polygon.__geo_interface__["coordinates"])
+    shapely_polygon = wkt.loads(roi)
+    roi = ee.Geometry.Polygon(shapely_polygon.__geo_interface__["coordinates"])
 
     """
     VI data is generated for a time year time span given current date.
@@ -111,8 +111,8 @@ def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
     END_DATE = today.strftime("%Y-%m-%d")
 
     vi_map = {
-        "ndvi": VIIndex.add_NDVI,
-        "ndmi": VIIndex.add_NDMI
+        "ndvi": VIIndex.add_ndvi,
+        "ndmi": VIIndex.add_ndmi
     }
     
     img_collection = (
@@ -120,13 +120,13 @@ def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
         .filterDate(START_DATE, END_DATE)
         .map(mask_cloud_and_shadow)
         .map(vi_map[vi])
-        .filter(ee.Filter.bounds(RoI))
+        .filter(ee.Filter.bounds(roi))
     ).select(vi)
 
     def map_vi(img: ee.Image) -> ee.Feature:
         stats = img.reduceRegion(
             reducer=ee.Reducer.median(),
-            geometry=RoI,
+            geometry=roi,
             scale=10,
             maxPixels=1e13,
             crs="EPSG:4326"
@@ -156,11 +156,11 @@ def get_vi_timeseries(RoI: str, vi: str) -> pd.DataFrame:
     # Apply preprocessing steps
     df_cleaned = clean_vi_series(df, vi)
  
-    df_cleaned.insert(2, "geometry", shape(RoI.getInfo()).wkt) # store geometry in WKt format
+    df_cleaned.insert(2, "geometry", shape(roi.getInfo()).wkt) # store geometry in WKt format
 
     return df_cleaned
 
-def combined_timeseries(RoI: pd.DataFrame) -> pd.DataFrame:
+def combined_timeseries(roi: pd.DataFrame) -> pd.DataFrame:
     """
     This function combines the NDVI and NDVI data ...
     """
@@ -173,16 +173,16 @@ def combined_timeseries(RoI: pd.DataFrame) -> pd.DataFrame:
  
         return df_merged[["date", "geometry", "ndvi", "ndmi"]]
 
-    if len(RoI) > max_polygons:
+    if len(roi) > max_polygons:
         logging.error(f"Data contains more than {max_polygons} polygons.")
         raise ValueError(f"Too many polygons provided (limit: {max_polygons}).")
 
     df_list = []
-    for idx, row in RoI.iterrows():
+    for idx, row in roi.iterrows():
         df = process_single_geometry(row["geometry"])
 
         # If `uuid` exists in the uploaded file, no need to assign new ones
-        uuid = row["uuid"] if "uuid" in RoI.columns else str(uuid4())
+        uuid = row["uuid"] if "uuid" in roi.columns else str(uuid4())
         df.insert(0, "uuid", uuid)
         df.insert(1, "region", row["region"])
         df.insert(2, "area (acres)", row.get("area (acres)", np.nan))

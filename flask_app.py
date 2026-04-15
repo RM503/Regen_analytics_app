@@ -24,8 +24,7 @@ from src.dashboards.initial_market_data.dash0_main import init_dash0
 from src.dashboards.polygon_generator.dash1_main import init_dash1
 from src.dashboards.farmland_characteristics.dash2_main import init_dash2
 from src.dashboards.farmland_statistics.dash3_main import init_dash3
-
-from logging_config import setup_logging
+from src.utils.logging_config import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
