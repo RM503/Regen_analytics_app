@@ -1,57 +1,61 @@
-# Obtains NDVI and NDMI time-series from queried polygons
-from datetime import date
-import logging
+"""
+Core module for Earth Engine time-series task
+"""
+from __future__ import annotations
+
 import os
+from datetime import date
+from pathlib import Path
 from uuid import uuid4
 
-from dateutil.relativedelta import relativedelta
 import ee
 import numpy as np
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from shapely import wkt
-from shapely.geometry import shape
 
-from utils.preprocessing import clean_vi_series
+from analytics.vi_preprocessing import clean_vi_series
+from utils.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
-credentials = ee.ServiceAccountCredentials(
-    os.environ["EE_SERVICE_ACC_EMAIL"],
-    key_file=os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
-)
-ee.Initialize(credentials)
+_EE_INITIALIZED = False
+S2_COLLECTION = "COPERNICUS/S2_SR_HARMONIZED"
+MAX_POLYGONS = 5
+DEFAULT_LOOKBACK_YEARS = 5
 
-class VIIndex:
-    """
-    This class packages functions for calculating various vegetation indices. 
-    The various functions are packaged as static methods.
-    """
-    @staticmethod
-    def add_ndvi(img: ee.Image) -> ee.Image:
-        """ 
-        This function takes an ee.Image object and adds an NDVI band to it.
 
-        Args: img - ee.Image object
+def initialize_ee() -> None:
+    """Initialize Earth Engine once per worker process."""
+    global _EE_INITIALIZED
 
-        Returns: same ee.Image object with an NDVI band 
-        """
-        ndvi = img.normalizedDifference(["B8", "B4"]).rename("ndvi")
-        return img.addBands([ndvi])
-    
-    @staticmethod
-    def add_ndmi(img: ee.Image) -> ee.Image:
-        """ 
-        This function takes an ee.Image object and adds an NDWI band to it. This uses
-        the following NDWI convention
+    if _EE_INITIALIZED:
+        return
 
-        NDMI = (NIR - SWIR) / (NIR + SWIR)
+    service_account = os.getenv("EE_SERVICE_ACC_EMAIL") or os.getenv("EE_SERVICE_ACCOUNT")
+    credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
-        Args: img - ee.Image object
+    if not service_account:
+        raise RuntimeError("Missing EE_SERVICE_ACC_EMAIL environment variable.")
+    if not credentials_path:
+        raise RuntimeError("Missing GOOGLE_APPLICATION_CREDENTIALS environment variable.")
+    if not Path(credentials_path).exists():
+        raise RuntimeError(f"Google credentials file not found: {credentials_path}")
 
-        Returns: same ee.Image object with an NDWI band 
-        """
-        ndmi = img.normalizedDifference(["B8", "B11"]).rename("ndmi")
-        return img.addBands([ndmi])
+    credentials = ee.ServiceAccountCredentials(
+        service_account,
+        key_file=credentials_path,
+    )
+    ee.Initialize(credentials)
+    _EE_INITIALIZED = True
+
+def add_vi_indices(img: ee.Image) -> ee.Image:
+    """Add NDVI and NDMI bands to a Sentinel-2 image."""
+    ndvi = img.normalizedDifference(["B8", "B4"]).rename("ndvi")
+    ndmi = img.normalizedDifference(["B8", "B11"]).rename("ndmi")
+
+    return img.addBands([ndvi, ndmi])
+
 
 def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
     """ 
@@ -83,109 +87,134 @@ def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
 
     return img.updateMask(mask)
 
-def get_vi_timeseries(roi: str, vi: str) -> pd.DataFrame:
-    """
-    This function generates NDVI and NDMI time-series data from a polygon geometry
-    provided by the user. The geometry data is provided in the WKT format.
 
-    Args: (i) RoI - the region(-of-interest; polygon data must be passed either standalone
-          (ii) vi - the vegetation index to generate; defaults to `ndvi` 
-
-    Returns: pandas dataframe containing vi time-series for queried polygons
-    """
-    
-    # Polygons are passed as wkt strings; need to be converted to ee.Geometry objects
-    if not isinstance(roi, str):
-        roi = str(roi)
-
-    shapely_polygon = wkt.loads(roi)
-    roi = ee.Geometry.Polygon(shapely_polygon.__geo_interface__["coordinates"])
-
-    """
-    VI data is generated for a time year time span given current date.
-    """
+def _default_date_range() -> tuple[str, str]:
     today = date.today()
-    five_years_ago = today - relativedelta(years=5)
+    start = today - relativedelta(years=DEFAULT_LOOKBACK_YEARS)
 
-    START_DATE = five_years_ago.strftime("%Y-%m-%d")
-    END_DATE = today.strftime("%Y-%m-%d")
+    return start.strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d")
 
-    vi_map = {
-        "ndvi": VIIndex.add_ndvi,
-        "ndmi": VIIndex.add_ndmi
-    }
-    
+
+def _build_roi(geometry_wkt: str) -> tuple[ee.Geometry, str]:
+    if not isinstance(geometry_wkt, str):
+        geometry_wkt = str(geometry_wkt)
+
+    shapely_geometry = wkt.loads(geometry_wkt)
+
+    if shapely_geometry.is_empty:
+        raise ValueError("Geometry is empty.")
+    if not shapely_geometry.is_valid:
+        raise ValueError("Geometry is invalid.")
+
+    return ee.Geometry(shapely_geometry.__geo_interface__), shapely_geometry.wkt
+
+
+def _features_to_dataframe(features: list[dict], geometry_wkt: str) -> pd.DataFrame:
+    if not features:
+        raise ValueError("No Sentinel-2 observations found for this polygon/date range.")
+
+    df = pd.DataFrame([feature.get("properties", {}) for feature in features])
+    required_columns = {"date", "ndvi", "ndmi"}
+    missing_columns = required_columns.difference(df.columns)
+
+    if missing_columns:
+        raise ValueError(f"Earth Engine response is missing columns: {sorted(missing_columns)}")
+
+    df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
+    df = (
+        df[["date", "ndvi", "ndmi"]]
+        .dropna(subset=["ndvi", "ndmi"], how="all")
+        .sort_values("date")
+        .drop_duplicates(subset="date", keep="first")
+        .reset_index(drop=True)
+    )
+
+    if df.empty:
+        raise ValueError("No usable NDVI/NDMI observations remained after cloud masking.")
+
+    for vi in ("ndvi", "ndmi"):
+        if df[vi].notna().sum() == 0:
+            raise ValueError(f"No usable {vi.upper()} observations remained after cloud masking.")
+
+    df = clean_vi_series(df, "ndvi")
+    df = clean_vi_series(df, "ndmi")
+    df.insert(1, "geometry", geometry_wkt)
+
+    return df[["date", "geometry", "ndvi", "ndmi"]]
+
+
+def get_vi_timeseries(geometry_wkt: str) -> pd.DataFrame:
+    """
+    Generate NDVI and NDMI time-series data for one WKT geometry.
+
+    Returns a dataframe with date, geometry, ndvi, and ndmi columns.
+    """
+    initialize_ee()
+
+    ee_roi, normalized_wkt = _build_roi(geometry_wkt)
+    start_date, end_date = _default_date_range()
+
+    logger.info("Fetching Sentinel-2 VI data from %s to %s.", start_date, end_date)
+
     img_collection = (
-        ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
-        .filterDate(START_DATE, END_DATE)
+        ee.ImageCollection(S2_COLLECTION)
+        .filterBounds(ee_roi)
+        .filterDate(start_date, end_date)
+        .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 80))
         .map(mask_cloud_and_shadow)
-        .map(vi_map[vi])
-        .filter(ee.Filter.bounds(roi))
-    ).select(vi)
+        .map(add_vi_indices)
+    ).select(["ndvi", "ndmi"])
 
     def map_vi(img: ee.Image) -> ee.Feature:
         stats = img.reduceRegion(
             reducer=ee.Reducer.median(),
-            geometry=roi,
-            scale=10,
+            geometry=ee_roi,
+            scale=20,
             maxPixels=1e13,
-            crs="EPSG:4326"
+            crs="EPSG:4326",
         )
-        
-        vi_data = stats.get(vi)
+
+        ndvi_data = stats.get("ndvi")
+        ndmi_data = stats.get("ndmi")
         date = ee.Date(img.get("system:time_start")).format("YYYY-MM-dd")
 
-        return ee.Feature(None, {"date": date, vi: vi_data})
-    
+        return ee.Feature(None, {"date": date, "ndvi": ndvi_data, "ndmi": ndmi_data})
+
     vi_timeseries = ee.FeatureCollection(img_collection.map(map_vi))
+    features = vi_timeseries.getInfo().get("features", [])
 
-    # Extract time-series data from the `properties` column
-    df = (
-        pd.DataFrame(vi_timeseries.getInfo()["features"])
-        .drop(columns=["type", "geometry"])
-    )
+    return _features_to_dataframe(features, normalized_wkt)
 
-    # Unpack the properties column
-    df[["date", vi]] = df["properties"].apply(pd.Series)
-    df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
-    df = df[["date", vi]]
 
-    # Remove duplicate dates (this can arise due to data acquisition), add geometry
-    df = df.drop_duplicates(subset="date", keep="first")
+def _validate_roi_dataframe(roi: pd.DataFrame) -> None:
+    if roi.empty:
+        raise ValueError("No polygons provided.")
+    if len(roi) > MAX_POLYGONS:
+        logger.error(f"Data contains more than {MAX_POLYGONS} polygons.")
+        raise ValueError(f"Too many polygons provided (limit: {MAX_POLYGONS}).")
+    if "geometry" not in roi.columns:
+        raise ValueError("ROI dataframe must include a 'geometry' column.")
 
-    # Apply preprocessing steps
-    df_cleaned = clean_vi_series(df, vi)
- 
-    df_cleaned.insert(2, "geometry", shape(roi.getInfo()).wkt) # store geometry in WKt format
-
-    return df_cleaned
 
 def combined_timeseries(roi: pd.DataFrame) -> pd.DataFrame:
     """
-    This function combines the NDVI and NDVI data ...
+    Generate combined NDVI and NDMI time-series data for each ROI row.
     """
-    max_polygons = 5
-    def process_single_geometry(geometry: str) -> pd.DataFrame:
-
-        df_ndvi = get_vi_timeseries(geometry, "ndvi")
-        df_ndmi = get_vi_timeseries(geometry, "ndmi")
-        df_merged = df_ndvi.merge(df_ndmi, on=["date", "geometry"], how="inner")
- 
-        return df_merged[["date", "geometry", "ndvi", "ndmi"]]
-
-    if len(roi) > max_polygons:
-        logging.error(f"Data contains more than {max_polygons} polygons.")
-        raise ValueError(f"Too many polygons provided (limit: {max_polygons}).")
+    initialize_ee()
+    _validate_roi_dataframe(roi)
 
     df_list = []
-    for idx, row in roi.iterrows():
-        df = process_single_geometry(row["geometry"])
+    for _, row in roi.iterrows():
+        df = get_vi_timeseries(row["geometry"])
 
         # If `uuid` exists in the uploaded file, no need to assign new ones
-        uuid = row["uuid"] if "uuid" in roi.columns else str(uuid4())
+        uuid = row.get("uuid") if "uuid" in roi.columns else None
+        if pd.isna(uuid):
+            uuid = str(uuid4())
+
         df.insert(0, "uuid", uuid)
-        df.insert(1, "region", row["region"])
+        df.insert(1, "region", row.get("region"))
         df.insert(2, "area (acres)", row.get("area (acres)", np.nan))
         df_list.append(df)
-   
+
     return pd.concat(df_list, ignore_index=True)

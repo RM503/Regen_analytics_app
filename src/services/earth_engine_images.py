@@ -47,19 +47,19 @@ def get_image_dates(image_collection: ee.ImageCollection):
 
     return dates.getInfo()
 
-def get_rgb_image(geometry: ee.Geometry, START_DATE: str) -> ee.Image:
+def get_rgb_image(geometry: ee.Geometry, start_date: str) -> ee.Image:
     """
     This function retrieves the least cloudy image of the given polygon
     at a specified 10-day window.
     """
-    START_DATE = ee.Date(START_DATE)
-    NEXT_DATE = START_DATE.advance(30, "day")
+    start_date = ee.Date(start_date)
+    next_date = start_date.advance(30, "day")
 
     # Get Sentinel-2 image collection, filter and sort by cloud cover
     s2 = (
         ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
         .filterBounds(geometry)
-        .filterDate(START_DATE, NEXT_DATE)
+        .filterDate(start_date, next_date)
         .map(mask_s2_clouds)
         .sort("CLOUD_COVER")
     )
