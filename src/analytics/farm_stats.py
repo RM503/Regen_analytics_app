@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import savgol_filter, find_peaks
 
-from ..utils.logging_config import get_logger
+from utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -40,12 +40,9 @@ class FarmDataProcessor:
         This method performs the preprocessing steps on the time-series
         dataframe.
         """
-        try:
-            required_cols = ["uuid", "date", "ndvi", "ndmi"]
-            if not pd.Series(required_cols).isin(df.columns).all():
-                raise ValueError("Required columns are not present in the dataframe.")
-        except ValueError as e:
-            logger.error(e)
+        required_cols = ["uuid", "date", "ndvi", "ndmi"]
+        if not pd.Series(required_cols).isin(df.columns).all():
+            raise ValueError("Required columns are not present in the dataframe.")
         
         if not pd.api.types.is_datetime64_any_dtype(df["date"]):
             df["date"] = pd.to_datetime(df["date"])
@@ -188,9 +185,9 @@ class FarmStatsCalculator:
             group = group.reset_index(drop=True)
             peaks, _ = find_peaks(
                 group["ndvi"].values, 
-                height=(0.4, 1.0), 
-                prominence=0.20, 
-                distance=10
+                height=self.height,
+                prominence=self.prominence,
+                distance=self.distance
             )
             group["peak"] = np.isin(group.index, peaks).astype(int)
             df_list.append(group)
