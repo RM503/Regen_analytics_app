@@ -1,19 +1,20 @@
 """
-Script for fetching ISDA soil data using async
+Module for fetching soil properties from ISDA API
 """
 import asyncio
 import os
-import logging
 from typing import Any
 
-import aiohttp 
-from aiohttp import ClientSession
-import dotenv
-import pandas as pd
+import aiohttp
 import geopandas as gpd
+import pandas as pd
+from aiohttp import ClientSession
+from aiohttp.client_exceptions import ClientResponseError
 from shapely.wkt import loads
 
-logging.getLogger(__name__)
+from utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 #dotenv.load_dotenv(override=True)
 USERNAME = os.getenv("isda_username")
@@ -77,16 +78,15 @@ async def fetch_soil_property_data(
     ) -> Any:
     """
     This function returns result for a particular soil property given coordinates.
-    ISDA probably does not allow multiple properties to be queried from the same
-    url (not sure).
 
-    Arguments: (i) session - AIOHTTP ClientSession
-               (ii) access_token - ISDA access token
-               (iii) lat - latitude coordinate
-               (iv) lon - longitude coordinate
-               (v) prop - soil property to query
+    Args: session (ClientSession): AIOHTTP ClientSession
+          access_token (str): ISDA access token
+          lat (float): latitude coordinate
+          lon (float): longitude coordinate
+          prop (float): soil property to query
     
-    Returns: soil property value
+    Returns:
+        (Any): soil property value
     """
     url = f"{BASE_URL}/isdasoil/v2/soilproperty?lat={lat}&lon={lon}&property={prop}&depth=0-20"
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -94,11 +94,10 @@ async def fetch_soil_property_data(
     async with session.get(url, headers=headers) as response:
         response.raise_for_status() # Obtain status of HTTP request
         data = await response.json()
-        value = None
 
         try:
             value = data["property"][prop][0]["value"]["value"]
-        except Exception:
+        except ClientResponseError:
             value = None
         
         return value
@@ -109,13 +108,21 @@ async def fetch_soil_data(
         uuid: str,
         lat: float, 
         lon: float
- ):
+ ) -> dict[str, Any]:
     """
     This function fetches all the required soil properties.
+
+    Args: session (ClientSession): AIOHTTP ClientSession
+          access_token (str) - ISDA access token
+          uuid (str): polygon uuid
+          lat (float): latitude coordinate
+          lon (float): longitude coordinate
+
+    Returns:
+        (dict[str, Any]): dictionary of all soil properties and values
     """
-    result = {}
-    result["uuid"] = uuid
-   
+    result = {"uuid": uuid}
+
     tasks =[
         fetch_soil_property_data(session, access_token, lat, lon, prop)
         for prop in SOIL_PROPERTIES
@@ -132,7 +139,6 @@ async def main(df: pd.DataFrame) -> pd.DataFrame:
 
     async with aiohttp.ClientSession() as session:
         access_token = await get_access_token(session)
-        tasks = []
 
         tasks = [
             fetch_soil_data(session, access_token, row["uuid"], row["lat"], row["lon"])

@@ -63,9 +63,11 @@ def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
     and (or) cloud shadow using Sentinel-2 `MSK_CLDPRB` and
     `Scene Classification Layer`.
 
-    Args: img - ee.Image object
+    Args:
+        img (ee.Image): the GEE image to be masked
 
-    Returns: same ee.Image object with an updated mask
+    Returns:
+        (ee.Image): same image object with an updated mask
     """
 
     # Setting cloud probability to 30%

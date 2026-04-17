@@ -1,4 +1,10 @@
+"""
+Module for performing preprocessing on NDVI/NDMI data generated
+by Google Earth Engine
+"""
 from __future__ import annotations
+
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -14,10 +20,13 @@ logger = get_logger(__name__)
 
 class VIDataValidation:
     """
-    This class validates the preprocessed time-series data containing any
-    vegetation index useful for the study.
+    Class that implements data validation using Pandera
+
+    Attributes:
+        vi_index (str): the name of the VI index; must be one of 'ndvi' or 'ndmi'
+        schema (DataFrameSchema): the schema used to validate the data
     """
-    def __init__(self, vi_index: str):
+    def __init__(self, vi_index: Literal["ndvi", "ndmi"]):
         self.vi_index = vi_index
         self.schema = self._build_schema()
 
@@ -45,8 +54,14 @@ def find_outliers(
     This function applies the Isolation Forest algorith on the
     time-series data for detecting possible outliers.
 
-    The value for contamination must account for the natural variation
-    in the data. We choose 0.025.
+    Args:
+        col (pd.Series): the time series data to be analyzed
+        n_estimators (int): the number of estimators to use; defaults to 150
+        contamination (float): the percentage of outliers to consider; defaults to 0.075
+        random_state (int): the random state to use; defaults to 10
+
+    Returns:
+        (np.ndarray): a numpy array containing outlier flags
     """
 
     x = col.values.reshape(-1, 1) # Format input into required shape
@@ -64,10 +79,20 @@ def find_outliers(
 
 def clean_vi_series(
         df: pd.DataFrame,
-        vi: str,
+        vi: Literal["ndvi", "ndmi"],
         window_size: int = 15,
         poly_order: int = 3
 ) -> pd.DataFrame:
+    """
+    This function combines all preprocessing steps and additionally performs
+    imputation to remove missing data.
+
+    Args:
+        df (pd.DataFrame): the time series data to be analyzed
+        vi (Literal["ndvi", "ndmi"]): the name of the VI index; must be one of 'ndvi' or 'ndmi'
+        window_size (int): the size of the window to use for SG filter; defaults to 15
+        poly_order (int): the order of the polynomial to use for SG filter; defaults to 3
+    """
     if not pd.api.types.is_datetime64_any_dtype(df["date"]):
         df["date"] = pd.to_datetime(df["date"])
 
@@ -79,16 +104,16 @@ def clean_vi_series(
         )
     
     # **ADD LOGGING HERE**
-    logger.info(f"Before outlier detection - NaN: {df[vi].isnull().sum()}, "
-                 f"inf: {np.isinf(df[vi]).sum()}, "
-                 f"min: {df[vi].min()}, max: {df[vi].max()}")
+    # logger.info(f"Before outlier detection - NaN: {df[vi].isnull().sum()}, "
+    #              f"inf: {np.isinf(df[vi]).sum()}, "
+    #              f"min: {df[vi].min()}, max: {df[vi].max()}")
     
     # Find outliers and bfill the values
     df["outlier"] = find_outliers(df[vi])
     
     # **ADD LOGGING HERE**
     outlier_count = (df["outlier"] == -1).sum()
-    logger.info(f"Outliers detected: {outlier_count}/{len(df)} ({100*outlier_count/len(df):.1f}%)")
+    # logger.info(f"Outliers detected: {outlier_count}/{len(df)} ({100*outlier_count/len(df):.1f}%)")
     
     df.loc[df["outlier"] == -1, vi] = np.nan
 
@@ -99,10 +124,9 @@ def clean_vi_series(
         )
     
     # **ADD LOGGING HERE**
-    logger.info(f"After bfill/ffill - NaN: {df_clean[vi].isnull().sum()}, "
-                 f"inf: {np.isinf(df_clean[vi]).sum()}")
-    
-    # **ADD THIS CHECK**
+    # logger.info(f"After bfill/ffill - NaN: {df_clean[vi].isnull().sum()}, "
+    #              f"inf: {np.isinf(df_clean[vi]).sum()}")
+
     if df_clean[vi].isnull().any() or np.isinf(df_clean[vi]).any():
         logger.error(f"Still have invalid values! NaN indices: {df_clean[df_clean[vi].isnull()].index.tolist()}")
         logger.error(f"Data sample: {df_clean[[vi]].head(20)}")

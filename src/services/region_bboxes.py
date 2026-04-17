@@ -1,6 +1,7 @@
-# Script for retrieving region bounding boxes from Supabase
+"""
+Module for retrieving region bounding boxes from Supabase
+"""
 
-import logging
 import os 
 from typing import Any
 
@@ -8,7 +9,9 @@ from shapely import wkt
 from shapely.geometry import Point
 from supabase import create_client
 
-logging.basicConfig(level=logging.INFO)
+from utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # API keys are read from global environment variable updates
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -61,7 +64,7 @@ def region_bboxes_to_geojson() -> dict[str, Any] | None:
         }
 
     except Exception as e:
-        logging.error(f"Failed to create Supabase client: {e}")
+        logger.error(f"Failed to create Supabase client: {e}")
         return None
     
 def generate_location_w_coords(region_geojson: dict[str, Any]) -> dict[str, list[float]]:
