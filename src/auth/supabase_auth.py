@@ -1,5 +1,4 @@
 # Supabase Python SDK scripts for authentication
-import logging
 import os
 
 import dotenv
@@ -8,7 +7,9 @@ from gotrue.types import AuthResponse
 from pydantic import BaseModel, EmailStr, ValidationError
 from supabase import Client, create_client
 
-logging.basicConfig(level=logging.INFO)
+from utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 #dotenv.load_dotenv(override=True)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -41,7 +42,7 @@ def supabase_auth(
             password=supabase_auth_password
         )
     except ValidationError as e:
-        logging.error(f"Invalid credentials: {e}")
+        logger.error(f"Invalid credentials: {e}")
 
         return None
 
@@ -53,11 +54,11 @@ def supabase_auth(
                 "password": supabase_auth_password
             }
         )
-        logging.info(f"User signed in successfully: {response.user.email}")
+        logger.info(f"User signed in successfully: {response.user.email}")
 
         return response
     except Exception as e:
-        logging.error(f"Error signing in user: {e}")
+        logger.error(f"Error signing in user: {e}")
 
         return None
 
@@ -73,7 +74,7 @@ def get_supabase_client() -> Client | None:
 
     # If not using local database
     if not token:
-        logging.warning("No access token found in session.")
+        logger.warning("No access token found in session.")
         return None
     client = create_client(SUPABASE_URL, SUPABASE_KEY)
     # Attach token for RLS authorization
