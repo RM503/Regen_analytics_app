@@ -1,3 +1,6 @@
+"""
+Module for initializing db runtimes
+"""
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Iterator, Literal
@@ -13,11 +16,14 @@ from utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-DbMode = Literal["local", "supabse"]
+# Database modes - must be either 'local' or 'supabase'
+DbMode = Literal["local", "supabase"]
+
 
 @dataclass(frozen=True)
 class DbRuntime:
     mode: DbMode
+
 
 def get_db_runtime() -> DbRuntime:
     """
@@ -39,6 +45,7 @@ def get_db_runtime() -> DbRuntime:
     logger.debug("Running in Supabase mode.")
     return DbRuntime(mode="supabse")
 
+
 @contextmanager
 def local_db_connection() -> Iterator[psycopg2connection]:
     """
@@ -52,13 +59,14 @@ def local_db_connection() -> Iterator[psycopg2connection]:
         conn.autocommit = False
         yield conn
 
-    except psycopg2.Error as e:
+    except psycopg2.OperationalError as e:
         logger.exception("Could not connect to PostgreSQL database.")
-        raise RuntimeError(f"Could not connect to PostgreSQL database") from e
+        raise RuntimeError("Could not connect to PostgreSQL database") from e
 
     finally:
         if conn is not None:
             conn.close()
+
 
 def get_supabase_client() -> Client:
     """

@@ -9,8 +9,10 @@ from sqlalchemy.exc import OperationalError
 
 logger = logging.getLogger(__name__)
 
-#dotenv.load_dotenv(override=True)
+dotenv.load_dotenv(override=True)
 DB_URL = os.getenv("DB_URL")
+
+
 if not DB_URL:
     raise ValueError("DB_URL environment variable is not set.")
 
