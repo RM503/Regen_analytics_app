@@ -1,3 +1,10 @@
+"""
+Determines runtime configurations for the application between
+AWS Elastic Beanstalk or Docker and reads environment variables
+appropriately.
+"""
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -6,12 +13,15 @@ from pathlib import Path
 import boto3
 from dotenv import load_dotenv
 
+load_dotenv()
+
 logging.basicConfig(level=logging.INFO)
 
-AWS_REGION = "us-east-1"
-SECRETS_NAME = "regen_organics_analytics_app/env"
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+AWS_SECRETS_NAME = os.getenv("AWS_SECRETS_NAME")
 
-def running_in_eb() -> bool:
+
+def _running_in_eb() -> bool:
     """
     Detect if running inside Elastic Beanstalk.
 
@@ -24,22 +34,24 @@ def running_in_eb() -> bool:
         or os.environ.get("APP_ENV") == "eb"
     )
 
-def running_in_docker() -> bool:
+
+def _running_in_docker() -> bool:
     """
     Detect generic Docker (non-EB).
     """
-    return Path("/.dockerenv").exists() and not running_in_eb()
+    return Path("/.dockerenv").exists() and not _running_in_eb()
 
-def load_from_sm(overwrite: bool = True) -> None:
+
+def _load_from_sm(overwrite: bool = True) -> None:
     """
     Load environment variables from AWS Secrets Manager.
     """
     client = boto3.client("secretsmanager", region_name=AWS_REGION)
     try:
-        secret_value = client.get_secret_value(SecretId=SECRETS_NAME)
+        secret_value = client.get_secret_value(SecretId=AWS_SECRETS_NAME)
         secrets = json.loads(secret_value["SecretString"])
     except client.exceptions.ResourceNotFoundException:
-        logging.warning(f"SecretsManager: {SECRETS_NAME} not found.")
+        logging.warning(f"SecretsManager: {AWS_SECRETS_NAME} not found.")
         return
     except Exception as e:
         logging.error(f"SecretsManager error: {e}")
@@ -49,9 +61,11 @@ def load_from_sm(overwrite: bool = True) -> None:
         if overwrite or key not in os.environ:
             os.environ[key] = value
 
-def load_from_file(path: str, overwrite: bool = False) -> None:
+
+def _load_from_file(path: str, overwrite: bool = False) -> None:
     if Path(path).exists():
         load_dotenv(path, override=overwrite)
+
 
 def init_config() -> None:
     """
@@ -61,12 +75,12 @@ def init_config() -> None:
     2. Docker (.env.docker)
     3. Local (.env)
     """
-    if running_in_eb():
+    if _running_in_eb():
         logging.info("Running in AWS EB environment.")
-        load_from_sm(overwrite=True)
-    elif running_in_docker():
+        _load_from_sm(overwrite=True)
+    elif _running_in_docker():
         logging.info("Running in plain Docker environment.")
-        load_from_file(".env.docker", overwrite=False)
+        _load_from_file(".env.docker", overwrite=False)
     else:
         logging.info("Running in local environment.")
-        load_from_file(".env", overwrite=False)
+        _load_from_file(".env", overwrite=False)
