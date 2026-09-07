@@ -3,7 +3,7 @@ from typing import Optional
 from dash import Input, Output, State, dash, ctx
 from dash.exceptions import PreventUpdate
 
-from utils.gee_images import get_rgb_image, convert_wkt_to_ee_geometry
+from services.earth_engine_images import get_rgb_image, convert_wkt_to_ee_geometry
 
 def register(app):
     @app.callback(

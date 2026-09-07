@@ -39,3 +39,8 @@ config.py
 .elasticbeanstalk/*
 !.elasticbeanstalk/config.yml
 !.elasticbeanstalk/*.global.yml
+
+*.rdb
+
+/auth/
+/db/*.py

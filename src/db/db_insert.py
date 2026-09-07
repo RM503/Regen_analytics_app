@@ -28,7 +28,7 @@ DbInsertReturn = tuple[str, str, bool]
 
 
 INSERT_ERROR_MSG = (
-    "❌ Data passed for insert is of incorrect type. Either rows are not."
+    "❌ Data passed for insert is of incorrect type. "
     "Either rows are not passed as a list or one or more row entities are not dictionaries."
 )
 
@@ -144,12 +144,17 @@ def local_db_insert_multi(stored_data: MultiTableRows, table_names: list[str]) -
     with local_db_connection() as conn:
         with conn.cursor() as cursor:
             for table_name in table_names:
+                if table_name not in stored_data:
+                    raise KeyError(f"Required table_name: {table_name} not found in stored_data.")
+
                 dataset = stored_data[table_name]
 
                 if not dataset:
                     continue
                 if not isinstance(dataset[0], dict):
-                    raise TypeError(f"Expected list of dicts for {table_name}, got {type(dataset[0])} instead.")
+                    raise TypeError(
+                        f"Expected list of dicts for {table_name}, got {type(dataset[0])} instead."
+                    )
 
                 _insert_local_table(dataset, table_name, cursor)
 
@@ -173,6 +178,9 @@ def supabase_db_insert_multi(stored_data: MultiTableRows, table_names: list[str]
     client = get_supabase_client()
 
     for table_name in table_names:
+        if table_name not in stored_data:
+            raise KeyError(f"Required table_name: {table_name} not found in stored_data.")
+
         dataset = stored_data[table_name]
 
         if not dataset:

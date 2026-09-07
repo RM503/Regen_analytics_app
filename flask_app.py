@@ -1,16 +1,15 @@
-# Flask backend 
-import logging
-import os 
+# Flask backend
+import os
 
 from flask import (
-    Flask, 
+    Flask,
     make_response,
-    redirect, 
-    request, 
-    render_template, 
-    session, 
+    redirect,
+    request,
+    render_template,
+    session,
     url_for
-) 
+)
 from supabase import create_client
 from werkzeug.wrappers import Response
 
@@ -18,16 +17,15 @@ from config_loader import init_config
 
 init_config() # noqa: E402
 
-from auth.supabase_auth import supabase_auth
-
+from src.auth.supabase_auth import supabase_auth
 from src.dashboards.initial_market_data.dash0_main import init_dash0
 from src.dashboards.polygon_generator.dash1_main import init_dash1
 from src.dashboards.farmland_characteristics.dash2_main import init_dash2
 from src.dashboards.farmland_statistics.dash3_main import init_dash3
-from src.utils.logging_config import setup_logging
+from src.utils.logging_config import setup_logging, get_logger
 
 setup_logging()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Load environment variables
 #dotenv.load_dotenv(override=True)
@@ -39,10 +37,11 @@ SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
 try:
     client = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception as e:
-    logging.warning(f"Failed to create Supabase client: {e}")
+    logger.warning(f"Failed to create Supabase client: {e}")
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = SESSION_SECRET_KEY
+
 
 @app.route("/login", methods=["POST"])
 def login() -> Response:
@@ -58,27 +57,29 @@ def login() -> Response:
     if not response or not response.user or not response.session:
         session["login_error"] = "Invalid email or password."
         return redirect(url_for("root"))
-    
+
     # Store session tokens
     session["user_name"] = email.split("@")[0]
-    session["user_id"] = response.user.id 
+    session["user_id"] = response.user.id
     session["access_token"] = response.session.access_token
     session["login_success"] = "Login successful!"
-    
+
     r = make_response(redirect(url_for("root")))
     r.set_cookie("access_token", response.session.access_token, httponly=True)
     return r
+
 
 @app.route("/logout", methods=["POST"])
 def logout() -> Response:
     """
     This function clears session keys and logs the user out.
     """
-    session.clear() 
+    session.clear()
     session["login_success"] = "You have been logged out!"
 
     return redirect(url_for("root"))
-    
+
+
 @app.route("/", methods=["GET"])
 def root():
     # Landing page
@@ -95,11 +96,13 @@ def root():
         username=username
     )
 
+
 # Initialize Dash apps
 init_dash0(app)
 init_dash1(app)
 init_dash2(app)
 init_dash3(app)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)

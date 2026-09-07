@@ -6,11 +6,12 @@ LABEL maintainer="Rafid Mahbub" \
 
 WORKDIR /app
 
-COPY credentials.json .
-COPY . .
-
+COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
+
+COPY credentials.json .
+COPY . .
 
 EXPOSE 8000
 

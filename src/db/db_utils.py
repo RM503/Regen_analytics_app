@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import psycopg2
 from psycopg2.extensions import connection
 from config import LOCAL_DB_CONFIG

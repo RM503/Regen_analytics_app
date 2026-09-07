@@ -5,7 +5,7 @@ import geopandas as gpd
 from dash import Input, Output
 from sqlalchemy import text
 
-from auth.db import engine
+from db.db import engine
 
 def register(app):
     @app.callback(

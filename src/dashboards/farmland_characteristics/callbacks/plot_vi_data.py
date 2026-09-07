@@ -14,8 +14,8 @@ from plotly.graph_objects import Figure
 
 from regen_queue.celery_app import celery_app
 from regen_queue.tasks import fetch_timeseries
-from utils.farm_stats import FarmDataProcessor, FarmStatsCalculator
-from utils.isda_soil_data import main as get_soil_data
+from analytics.farm_stats import FarmDataProcessor, FarmStatsCalculator
+from services.isda_soil_data import main as get_soil_data
 from utils.parse_contents import parse_contents
 
 OutputType = tuple[
@@ -233,6 +233,7 @@ def register(app):
 
         preprocessor = FarmDataProcessor()
         farm_stats = FarmStatsCalculator(preprocessor)
+        # returns four df dicts: df_stats, df_highndmidays, df_peakvidistribution and df_ndvipeaksperfarm
         df_stats = farm_stats.calculate_stats(df)
 
         try:

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Hashable
 from dataclasses import dataclass
-from typing import Any, Hashable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -43,7 +44,7 @@ class FarmDataProcessor:
         required_cols = ["uuid", "date", "ndvi", "ndmi"]
         if not pd.Series(required_cols).isin(df.columns).all():
             raise ValueError("Required columns are not present in the dataframe.")
-        
+
         if not pd.api.types.is_datetime64_any_dtype(df["date"]):
             df["date"] = pd.to_datetime(df["date"])
 
@@ -57,7 +58,7 @@ class FarmDataProcessor:
         df["ndvi"] = df.groupby("uuid")["ndvi"].transform(self._safe_smoothing)
         df["ndmi"] = df.groupby("uuid")["ndmi"].transform(self._safe_smoothing)
 
-        return df 
+        return df
 
 @dataclass(frozen=True)
 class FarmStatsCalculator:
@@ -174,7 +175,7 @@ class FarmStatsCalculator:
 
     def calculate_stats(self, df: pd.DataFrame) -> dict[str, list[dict[Hashable, Any]] | Any]:
         df_processed = self.processor.preprocess(df)
-        
+
         df_list = []
 
         """
@@ -193,7 +194,7 @@ class FarmStatsCalculator:
             df_list.append(group)
 
         df_concat: pd.DataFrame = pd.concat(df_list, ignore_index=True)
-        
+
         df_concat["year"] = df_concat["date"].dt.year
         df_concat["month"] = df_concat["date"].dt.month
 
@@ -209,7 +210,7 @@ class FarmStatsCalculator:
             df_concat.groupby(["uuid", "year", "region"])["ndvi"]
             .max()
             .reset_index(name="ndvi_max")
-        
+
         )
 
         df_ndmi_max = (
@@ -238,7 +239,7 @@ class FarmStatsCalculator:
         df_ndvipeaksperfarm = self._ndvi_peaks_per_farm(df)
 
         # Return a serialized version of the dataframe to be kept in dcc.Store()
-        
+
         return {
             "df_stats": df_stats.to_dict("records"),
             "df_peakvidistribution": df_peakvidistribution.to_dict("records"),

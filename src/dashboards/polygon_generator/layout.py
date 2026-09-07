@@ -1,11 +1,11 @@
 # Dashboard 1 layout
-from dash import html, dcc
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 import geopandas as gpd 
 import json
+from dash import html, dcc
 
-from ...utils.region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
+from services.region_bboxes import region_bboxes_to_geojson, generate_location_w_coords
 
 # Import administrative boundaries shapefile and convert to geojson
 gdf = gpd.read_file("src/dashboards/polygon_generator/shapefiles/ken_adm_iebc_20191031_shp/ken_admbnda_adm2_iebc_20191031.shp")

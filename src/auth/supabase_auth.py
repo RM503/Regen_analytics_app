@@ -1,29 +1,45 @@
-# Supabase Python SDK scripts for authentication
+from __future__ import annotations
+
 import os
 
-import dotenv
-from flask import session
+from dotenv import load_dotenv
+from gotrue.errors import AuthApiError
 from gotrue.types import AuthResponse
-from pydantic import BaseModel, EmailStr, ValidationError
-from supabase import Client, create_client
+from pydantic import BaseModel, EmailStr, ValidationError, field_validator
+from supabase import Client
 
 from utils.logging_config import get_logger
 
+load_dotenv()
+
 logger = get_logger(__name__)
 
-#dotenv.load_dotenv(override=True)
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+
 class SupabaseCredentials(BaseModel):
-    email: EmailStr # Must be an email string
+    """
+    Pydantic model for validating Supabase credentials.
+    Defines a method that checks for empty password strings.
+    """
+    email: EmailStr
     password: str
+
+    @field_validator("password")
+    @classmethod
+    def password_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Password string cannot be empty")
+        return v
+
 
 def supabase_auth(
     supabase_auth_email: str,
     supabase_auth_password: str,
     client: Client
-) -> AuthResponse | None:
+) -> AuthResponse:
     """
     This function authenticates Supabase logins by first performing
     a validation check on the entered types and then a user
@@ -37,46 +53,28 @@ def supabase_auth(
     """
     try:
         # Validate credentials
-        _ = SupabaseCredentials(
+        credentials = SupabaseCredentials(
             email=supabase_auth_email,
             password=supabase_auth_password
         )
     except ValidationError as e:
         logger.error(f"Invalid credentials: {e}")
-
-        return None
+        raise
 
     try:
         # Authentication response
         response = client.auth.sign_in_with_password(
             {
-                "email": supabase_auth_email,
-                "password": supabase_auth_password
+                "email": credentials.email,
+                "password": credentials.password
             }
         )
         logger.info(f"User signed in successfully: {response.user.email}")
 
         return response
-    except Exception as e:
-        logger.error(f"Error signing in user: {e}")
-
-        return None
-
-def get_supabase_client() -> Client | None:
-    """
-    Create Supabase client with authentication token.
-    The client will only be invoked for performing `INSERT`
-    operations from authenticated users. This also allows to
-    test PostgreSQL operations on a local database.
-    """
-    token = session.get("access_token")
-
-
-    # If not using local database
-    if not token:
-        logger.warning("No access token found in session.")
-        return None
-    client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    # Attach token for RLS authorization
-    client.postgrest.auth(token)
-    return client
+    except AuthApiError:
+        logger.warning(f"Authentication failed for {credentials.email}")
+        raise
+    except Exception:
+        logger.error(f"An unexpected error occurred for {credentials.email}")
+        raise

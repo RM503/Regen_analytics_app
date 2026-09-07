@@ -2,7 +2,7 @@
 Module for retrieving region bounding boxes from Supabase
 """
 
-import os 
+import os
 from typing import Any
 
 from shapely import wkt
@@ -24,7 +24,7 @@ def parse_centroid(centroid_str: str) -> Point:
     if centroid_str.upper().startswith("POINT"):
         # Already proper WKT
         return wkt.loads(centroid_str)
-    
+
     # Remove parentheses if present
     centroid_str = centroid_str.strip("()")
 
@@ -37,7 +37,7 @@ def parse_centroid(centroid_str: str) -> Point:
     lon, lat = float(lon_str), float(lat_str)
     return Point(lon, lat)
 
-def region_bboxes_to_geojson() -> dict[str, Any] | None:
+def region_bboxes_to_geojson() -> dict[str, Any]:
     # This function converts Supabase rows into readable GeoJSON format.
     try:
         client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -64,9 +64,9 @@ def region_bboxes_to_geojson() -> dict[str, Any] | None:
         }
 
     except Exception as e:
-        logger.error(f"Failed to create Supabase client: {e}")
-        return None
-    
+        logger.error(f"Failed to retrieve region bounding boxes: {e}")
+        return {"type": "FeatureCollection", "features": []}
+
 def generate_location_w_coords(region_geojson: dict[str, Any]) -> dict[str, list[float]]:
     """
     This function creates the `location_w_coords` dictionary
@@ -82,8 +82,8 @@ def generate_location_w_coords(region_geojson: dict[str, Any]) -> dict[str, list
         region = feature["properties"]["region"]
         centroid = parse_centroid(feature["properties"]["centroid_point"]) # Convert wkt to geometry
 
-        lon = centroid.x 
-        lat = centroid.y 
+        lon = centroid.x
+        lat = centroid.y
 
         location_w_coords[region] = [lat, lon]
 

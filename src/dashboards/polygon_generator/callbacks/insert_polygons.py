@@ -1,23 +1,9 @@
-import logging
-from datetime import datetime
 from typing import Any
 
 from dash import Input, Output, State
 
-from auth.supabase_auth import get_supabase_client
-from config import USE_LOCAL_DB, LOCAL_DB_CONFIG
-from db.db_utils import db_connect
-
-logger = logging.getLogger(__name__)
-
-if USE_LOCAL_DB:
-    logger.info(
-        f"Running in LOCAL mode — connecting to PostgreSQL at "
-        f"{LOCAL_DB_CONFIG['host']}:{LOCAL_DB_CONFIG['port']}, "
-        f"database '{LOCAL_DB_CONFIG['database']}'."
-    )
-else:
-    logger.info("Running in SUPABASE mode.")
+from db.db_client import get_db_runtime
+from db.db_insert import local_db_insert_single, supabase_db_insert_single
 
 def register(app):
     @app.callback(
@@ -29,7 +15,7 @@ def register(app):
             State("polygons_store", "data"),
             prevent_initial_call=True
         )
-    def run(n_clicks: int, token: str, stored_data: dict[str, Any]) -> tuple[str, str, bool]:
+    def run(n_clicks: int, token: str, stored_data: list[dict[str, Any]]) -> tuple[str, str, bool]:
         """
         This function inserts the polygons chosen using the interactive
         tile-map into the `farmpolygons` table. This is only applicable
@@ -42,39 +28,9 @@ def register(app):
         Returns: Status message of the insert operation
         """
         table_name = "farmpolygons"
-        try:
-
-            if USE_LOCAL_DB:
-                conn = db_connect()
-                
-                with conn.cursor() as cursor:
-                    for row in stored_data:
-                        row.setdefault("created_at", datetime.now().isoformat())
-
-                        columns = ', '.join(row.keys())
-                        placeholders = ', '.join(['%s'] * len(row))
-                        values = tuple(row.values())
-
-                        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-                        cursor.execute(query, values)
-
-                    logger.info(f"Inserted {len(stored_data)} polygons successfully.")
-                    return f"Inserted {len(stored_data)} polygons successfully.", "success", True
-
-            else:
-                client = get_supabase_client()
-                # Add timestamp
-                for item in stored_data:
-                    item["created_at"] = datetime.now().isoformat()
-
-                response = client.table(table_name).insert(stored_data).execute()
-
-                if response.data:
-                    logger.info(f"Inserted {len(response.data)} polygons successfully.")
-                    return f"Inserted {len(response.data)} polygons successfully.", "success", True
-                else:
-                    logger.error(f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}")
-                    return f"Insert failed: {response.error if hasattr(response, 'error') else 'Unknown error'}", "danger", True
-
-        except Exception as e:
-            logger.error(f"Error inserting polygons: {e}"), "danger", True
+        insert = (
+            local_db_insert_single
+            if get_db_runtime().mode == "local"
+            else supabase_db_insert_single
+        )
+        return insert(stored_data, table_name)

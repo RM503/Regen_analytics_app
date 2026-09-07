@@ -1,11 +1,11 @@
-import os 
+import os
 
 from supabase import Client, create_client
 
 _SUPABASE_URL = os.getenv("SUPABASE_URL")
 _SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-_service_client = None 
+_service_client = None
 
 def get_service_supabase_client() -> Client:
     """

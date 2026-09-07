@@ -24,6 +24,10 @@ S2_COLLECTION = "COPERNICUS/S2_SR_HARMONIZED"
 MAX_POLYGONS = 5
 DEFAULT_LOOKBACK_YEARS = 5
 
+# SCL specific
+SCL_SHADOW = 3
+SCL_CIRRUS = 10
+
 
 def initialize_ee() -> None:
     """Initialize Earth Engine once per worker process."""
@@ -49,6 +53,7 @@ def initialize_ee() -> None:
     ee.Initialize(credentials)
     _EE_INITIALIZED = True
 
+
 def add_vi_indices(img: ee.Image) -> ee.Image:
     """Add NDVI and NDMI bands to a Sentinel-2 image."""
     ndvi = img.normalizedDifference(["B8", "B4"]).rename("ndvi")
@@ -57,7 +62,12 @@ def add_vi_indices(img: ee.Image) -> ee.Image:
     return img.addBands([ndvi, ndmi])
 
 
-def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
+def mask_cloud_and_shadow(
+        img: ee.Image,
+        *,
+        cloud_prob_thresh: int = 30,
+        snow_prob_thresh: int = 30
+    ) -> ee.Image:
     """ 
     This function creates a pixel mask that are deemed to be cloud
     and (or) cloud shadow using Sentinel-2 `MSK_CLDPRB` and
@@ -65,6 +75,8 @@ def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
 
     Args:
         img (ee.Image): the GEE image to be masked
+        cloud_prob_thresh (int): probability that pixel is cloud; defaults to 30
+        snow_prob_thresh (int): probability that pixel is snow; defaults to 30
 
     Returns:
         (ee.Image): same image object with an updated mask
@@ -73,13 +85,13 @@ def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
     # Setting cloud probability to 30%
     cloud_prob = img.select("MSK_CLDPRB")
     snow_prob = img.select("MSK_SNWPRB")
-    cloud = cloud_prob.lt(30)
-    snow = snow_prob.lt(30)
+    cloud = cloud_prob.lt(cloud_prob_thresh)
+    snow = snow_prob.lt(snow_prob_thresh)
 
     # Use SCL to select shadows and cirrus cloud masks
     scl = img.select("SCL")
-    shadow = scl.eq(3)
-    cirrus = scl.eq(10)
+    shadow = scl.eq(SCL_SHADOW)
+    cirrus = scl.eq(SCL_CIRRUS)
 
     mask = (
         cloud.And(snow)
@@ -91,6 +103,7 @@ def mask_cloud_and_shadow(img: ee.Image) -> ee.Image:
 
 
 def _default_date_range() -> tuple[str, str]:
+    """Creates a 5-year lookback range from current date."""
     today = date.today()
     start = today - relativedelta(years=DEFAULT_LOOKBACK_YEARS)
 
@@ -98,6 +111,7 @@ def _default_date_range() -> tuple[str, str]:
 
 
 def _build_roi(geometry_wkt: str) -> tuple[ee.Geometry, str]:
+    """Builds ee.Geometry from WKT representation."""
     if not isinstance(geometry_wkt, str):
         geometry_wkt = str(geometry_wkt)
 
@@ -145,7 +159,13 @@ def _features_to_dataframe(features: list[dict], geometry_wkt: str) -> pd.DataFr
     return df[["date", "geometry", "ndvi", "ndmi"]]
 
 
-def get_vi_timeseries(geometry_wkt: str) -> pd.DataFrame:
+def get_vi_timeseries(
+        geometry_wkt: str,
+        *,
+        cloudy_pixel_pct: int = 80,
+        scale: int = 20,
+        max_pixels = 1e13
+    ) -> pd.DataFrame:
     """
     Generate NDVI and NDMI time-series data for one WKT geometry.
 
@@ -162,7 +182,10 @@ def get_vi_timeseries(geometry_wkt: str) -> pd.DataFrame:
         ee.ImageCollection(S2_COLLECTION)
         .filterBounds(ee_roi)
         .filterDate(start_date, end_date)
-        .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 80))
+        .filter(ee.Filter.lt(
+            "CLOUDY_PIXEL_PERCENTAGE",
+            cloudy_pixel_pct 
+        ))
         .map(mask_cloud_and_shadow)
         .map(add_vi_indices)
     ).select(["ndvi", "ndmi"])
@@ -171,8 +194,8 @@ def get_vi_timeseries(geometry_wkt: str) -> pd.DataFrame:
         stats = img.reduceRegion(
             reducer=ee.Reducer.median(),
             geometry=ee_roi,
-            scale=20,
-            maxPixels=1e13,
+            scale=scale,
+            maxPixels=max_pixels,
             crs="EPSG:4326",
         )
 

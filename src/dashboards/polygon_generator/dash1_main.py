@@ -1,14 +1,12 @@
 # Dashboard app with callbacks for `Polygon Generator` page
 
-import logging
 from typing import Any
 
 import dash
-from dash import Dash, dcc, Input, Output, State
 import dash_bootstrap_components as dbc
-from flask import Flask
-from flask import session
 import pandas as pd
+from dash import Dash, dcc, Input, Output, State
+from flask import Flask, session
 
 from .callbacks import (
     insert_polygons,
@@ -17,8 +15,6 @@ from .callbacks import (
     update_vector_layer
 )
 from .layout import layout
-
-logger = logging.getLogger(__name__)
 
 def init_dash1(server: Flask) -> Dash:
     app = Dash(

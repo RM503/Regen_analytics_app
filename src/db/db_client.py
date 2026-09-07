@@ -1,13 +1,16 @@
 """
 Module for initializing db runtimes
 """
+from __future__ import annotations
+
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Iterator, Literal
+from typing import Literal
 
 import psycopg2
 from flask import session
-from psycopg2.extensions import connection as psycopg2connection
+from psycopg2.extensions import connection as Psycopg2Connection
 from supabase import Client, create_client
 
 from config import LOCAL_DB_CONFIG, USE_LOCAL_DB
@@ -43,25 +46,35 @@ def get_db_runtime() -> DbRuntime:
         return DbRuntime(mode="local")
 
     logger.debug("Running in Supabase mode.")
-    return DbRuntime(mode="supabse")
+    return DbRuntime(mode="supabase")
 
 
 @contextmanager
-def local_db_connection() -> Iterator[psycopg2connection]:
+def local_db_connection() -> Iterator[Psycopg2Connection]:
     """
     Establishes a local PostgreSQL database connection using the
     Psycopg2Connection object.
     """
-    conn: psycopg2connection | None = None
+    conn: Psycopg2Connection | None = None
 
     try:
         conn = psycopg2.connect(**LOCAL_DB_CONFIG)
-        conn.autocommit = False
         yield conn
+        conn.commit()
 
     except psycopg2.OperationalError as e:
+        if conn is not None:
+            conn.rollback()
+
         logger.exception("Could not connect to PostgreSQL database.")
         raise RuntimeError("Could not connect to PostgreSQL database") from e
+
+    except Exception as e:
+        if conn is not None:
+            conn.rollback()
+
+        logger.exception("An unexpected error occurred.")
+        raise e
 
     finally:
         if conn is not None:

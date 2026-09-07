@@ -4,7 +4,7 @@ import dash_leaflet as dl
 
 from dash import Input, Output, State 
 
-from utils.region_bboxes import generate_location_w_coords, region_bboxes_to_geojson
+from services.region_bboxes import generate_location_w_coords, region_bboxes_to_geojson
 
 logger = logging.getLogger(__name__)
 

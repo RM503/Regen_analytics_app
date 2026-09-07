@@ -1,4 +1,4 @@
-import logging
+
 from typing import Any
 from uuid import uuid4
 
@@ -7,6 +7,10 @@ from dash import dash_table, Input, Output
 from pyproj import Transformer
 from shapely.geometry import shape 
 from shapely.ops import transform
+
+from utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 OutputType = tuple[str | dict[str, Any], bool, str, bool, str, str | dict[str, Any]]
 
@@ -26,8 +30,8 @@ def register(app):
         This function displays the geometries polygons drawn on
         the map, with a maximum of five polygons allowed.
         """
-        MAX_POLYGONS = 5
-        MAX_AREA = 3000 # in acres
+        max_polygons = 5
+        max_area = 3000 # in acres
         if geojson and "features" in geojson:
             wkt_list = []
             polygon_dict = {"uuid": [], "region": [], "area": [], "geometry": []}
@@ -40,7 +44,7 @@ def register(app):
             area_alert_message = ""
 
             for i, feature in enumerate(geojson["features"]):
-                if i < MAX_POLYGONS:
+                if i < max_polygons:
                     geom = feature.get("geometry")
                     if geom:
                         try:
@@ -53,9 +57,9 @@ def register(app):
                             #area = polygon.area * (111_000**2) * 0.000247105 # area in acres (rough conversion to physical distance)
                             area = projected.area * 0.000247105
                             
-                            if area > MAX_AREA:
+                            if area > max_area:
                                 show_area_alert = True
-                                area_alert_message = f"⚠️ Polygon {i+1} exceeds area limit of {MAX_AREA} acres and was not added."
+                                area_alert_message = f"⚠️ Polygon {i+1} exceeds area limit of {max_area} acres and was not added."
                                 
                                 continue
                             
@@ -68,7 +72,7 @@ def register(app):
                             polygon_dict["geometry"].append(wkt)
 
                         except Exception as e:
-                            logging.error(f"Error processing polygon {i+1}: {e}")
+                            logger.error(f"Error processing polygon {i+1}: {e}")
                 else:
                     show_count_alert = True
                     count_alert_message = "⚠️ You can only draw up to 5 polygons."

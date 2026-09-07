@@ -42,7 +42,7 @@ class VIDataValidation:
 
     def validate(self, df: pd.DataFrame) -> pd.DataFrame:
         return self.schema.validate(df)
-    
+
 def find_outliers(
         col: pd.Series,
         *,
@@ -102,19 +102,19 @@ def clean_vi_series(
             .bfill()
             .ffill()
         )
-    
+
     # **ADD LOGGING HERE**
     # logger.info(f"Before outlier detection - NaN: {df[vi].isnull().sum()}, "
     #              f"inf: {np.isinf(df[vi]).sum()}, "
     #              f"min: {df[vi].min()}, max: {df[vi].max()}")
-    
+
     # Find outliers and bfill the values
     df["outlier"] = find_outliers(df[vi])
-    
+
     # **ADD LOGGING HERE**
     outlier_count = (df["outlier"] == -1).sum()
     # logger.info(f"Outliers detected: {outlier_count}/{len(df)} ({100*outlier_count/len(df):.1f}%)")
-    
+
     df.loc[df["outlier"] == -1, vi] = np.nan
 
     df_clean = (
@@ -122,7 +122,7 @@ def clean_vi_series(
               .ffill()
               .drop(columns="outlier")
         )
-    
+
     # **ADD LOGGING HERE**
     # logger.info(f"After bfill/ffill - NaN: {df_clean[vi].isnull().sum()}, "
     #              f"inf: {np.isinf(df_clean[vi]).sum()}")
@@ -133,11 +133,11 @@ def clean_vi_series(
         # Replace remaining invalid values
         df_clean[vi] = df_clean[vi].replace([np.inf, -np.inf], np.nan)
         df_clean[vi] = df_clean[vi].interpolate(method="linear").bfill().ffill()
-        
+
         # Last resort: use median
         if df_clean[vi].isnull().any():
             df_clean[vi] = df_clean[vi].fillna(df_clean[vi].median())
-    
+
     # Apply Savitzky-Golay filter
     if len(df_clean) >= window_size:
         df_clean[vi] = savgol_filter(df_clean[vi], window_size, poly_order)

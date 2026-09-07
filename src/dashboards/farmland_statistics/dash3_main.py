@@ -13,7 +13,7 @@ from sqlalchemy.exc import OperationalError
 from sqlmodel import create_engine
 
 from .layout import layout
-from ...utils.region_bboxes import region_bboxes_to_geojson
+from services.region_bboxes import region_bboxes_to_geojson
 
 logger = logging.getLogger(__name__)
 
