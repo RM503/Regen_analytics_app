@@ -33,12 +33,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY")
 
-# Initialize Supabase client
-try:
-    client = create_client(SUPABASE_URL, SUPABASE_KEY)
-except Exception as e:
-    logger.warning(f"Failed to create Supabase client: {e}")
-
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = SESSION_SECRET_KEY
 
@@ -51,6 +45,8 @@ def login() -> Response:
     """
     email =  request.form.get("email")
     password = request.form.get("password")
+    # Supabase clients retain auth state; isolate it between login requests.
+    client = create_client(SUPABASE_URL, SUPABASE_KEY)
     response = supabase_auth(email, password, client)
 
     # Check for incorrect login

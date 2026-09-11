@@ -77,7 +77,8 @@ def init_config() -> None:
     """
     if _running_in_eb():
         logging.info("Running in AWS EB environment.")
-        _load_from_sm(overwrite=True)
+        # Explicit runtime settings (e.g. container paths and Redis URLs) win.
+        _load_from_sm(overwrite=False)
     elif _running_in_docker():
         logging.info("Running in plain Docker environment.")
         _load_from_file(".env.docker", overwrite=False)

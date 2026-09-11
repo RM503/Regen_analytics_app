@@ -100,7 +100,7 @@ docker compose logs -f app celery
 docker compose down
 ```
 
-Both Dockerfiles install `requirements.txt`. The root `Dockerfile` is intended for the web container in AWS Elastic Beanstalk; running that container alone does not start the Redis broker or Celery worker needed for time-series requests.
+Both Dockerfiles install `requirements.txt`. The Beanstalk bundle replaces that file with the tested versions in `deploy/requirements.lock.txt` and includes the production Compose configuration for Nginx, the web app, Celery, and Redis.
 
 ## Run natively
 
@@ -147,7 +147,30 @@ PYTHONPATH=src gunicorn -c gunicorn.conf.py flask_app:app
 
 ### AWS configuration
 
-`config_loader.py` detects Elastic Beanstalk using environment markers or `APP_ENV=eb` and loads a JSON secret from AWS Secrets Manager. Set `AWS_SECRETS_NAME`, provide permission to read that secret, and optionally set `AWS_REGION` (default `us-east-1`). A deployment must also supply reachable Redis and a Celery worker with the same broker and backend settings as the web app.
+`config_loader.py` detects Elastic Beanstalk using environment markers or `APP_ENV=eb` and loads a JSON secret from AWS Secrets Manager. Explicit environment variables take precedence over secret values. Both the web app and Celery initialize this configuration.
+
+The deployment targets application `regen-organics-analytics-app`, environment `regen-app-test`, in `us-east-1`, using AWS profile `eb-cli`. It reuses secret `regen_organics_analytics_app/env` and the existing Beanstalk service and instance roles. The instance role must be able to read that secret.
+
+```sh
+# Build, upload, and create or update the environment.
+.venv/bin/python scripts/deploy_eb.py
+
+# Inspect deployment progress.
+eb status regen-app-test
+eb events regen-app-test
+```
+
+The script bundles the required local `credentials.json` and market-data plots, generates a minimal production `config.py`, and excludes local environment files. Bundles and images contain the Earth Engine credential and must remain private. AWS source uploads use S3 server-side encryption.
+
+`deploy/environment-options.json` configures a single `t3.medium` instance with a 30 GB gp3 root volume and enhanced health reporting. `deploy/docker-compose.yml` runs Nginx on port 80, Gunicorn on the internal port 8080, a Celery worker, and private Redis. Nginx emits the logs used by Beanstalk health reporting. Redis data persists across container restarts on that instance, but instance replacement loses queued jobs and results. This configuration serves HTTP; a custom domain and TLS are separate configuration work.
+
+To build a bundle without deploying:
+
+```sh
+python3 scripts/build_eb_bundle.py /tmp/regen-app.zip
+```
+
+Use the deployment script rather than plain `eb deploy`, because the development Compose file and ignored local data require explicit packaging. When runtime dependencies change, validate the container and refresh `deploy/requirements.lock.txt` before redeploying.
 
 ## Usage and repository layout
 

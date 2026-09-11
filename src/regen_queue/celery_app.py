@@ -1,9 +1,9 @@
 import os 
 
 from celery import Celery
-from dotenv import load_dotenv
+from config_loader import init_config
 
-load_dotenv()
+init_config()
 
 def make_celery() -> Celery:
     broker_url = os.getenv("CELERY_BROKER_URL")

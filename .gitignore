@@ -29,6 +29,8 @@ src/dashboards/farmland_characteristics/test_data
 
 db/data
 
+deploy/iam-deployer-policy.json
+
 docs/*
 !docs/regen_app_manual.pdf
 

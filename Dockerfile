@@ -8,12 +8,14 @@ LABEL maintainer="Rafid Mahbub" \
 # Set working directory
 WORKDIR /app
 
-COPY credentials.json .
+ENV PYTHONPATH=/app:/app/src \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose port 8080 for nginx
 EXPOSE 8080 

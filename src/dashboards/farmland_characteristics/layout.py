@@ -82,8 +82,14 @@ layout = dbc.Container([
             html.P("Type polygon data in the box (one per submission)"),
             dcc.Textarea(
                 id="polygon_input",
-                value="Add polygon geometry here",
-                style={"width": "100%", "height": "100px"}
+                value="",
+                placeholder="Add polygon geometry here",
+                style={
+                    "width": "100%",
+                    "height": "100px",
+                    "color": "#212529",
+                    "backgroundColor": "#ffffff",
+                }
             ),
             dbc.Button("Submit", id="upload_button", n_clicks=0),
             html.Br(),

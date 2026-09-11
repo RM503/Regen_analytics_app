@@ -1,0 +1,11 @@
+[
+  {"Namespace":"aws:elasticbeanstalk:environment","OptionName":"EnvironmentType","Value":"SingleInstance"},
+  {"Namespace":"aws:elasticbeanstalk:environment","OptionName":"ServiceRole","Value":"aws-elasticbeanstalk-service-role"},
+  {"Namespace":"aws:autoscaling:launchconfiguration","OptionName":"IamInstanceProfile","Value":"aws-elasticbeanstalk-ec2-role"},
+  {"Namespace":"aws:autoscaling:launchconfiguration","OptionName":"DisableIMDSv1","Value":"true"},
+  {"Namespace":"aws:autoscaling:launchconfiguration","OptionName":"RootVolumeType","Value":"gp3"},
+  {"Namespace":"aws:autoscaling:launchconfiguration","OptionName":"RootVolumeSize","Value":"30"},
+  {"Namespace":"aws:ec2:instances","OptionName":"InstanceTypes","Value":"t3.medium"},
+  {"Namespace":"aws:elasticbeanstalk:healthreporting:system","OptionName":"SystemType","Value":"enhanced"},
+  {"Namespace":"aws:elasticbeanstalk:command","OptionName":"Timeout","Value":"1800"}
+]

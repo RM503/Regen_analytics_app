@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 
 from dotenv import load_dotenv
-from gotrue.errors import AuthApiError
-from gotrue.types import AuthResponse
+from supabase_auth.errors import AuthApiError
+from supabase_auth.types import AuthResponse
 from pydantic import BaseModel, EmailStr, ValidationError, field_validator
 from supabase import Client
 
@@ -39,7 +39,7 @@ def supabase_auth(
     supabase_auth_email: str,
     supabase_auth_password: str,
     client: Client
-) -> AuthResponse:
+) -> AuthResponse | None:
     """
     This function authenticates Supabase logins by first performing
     a validation check on the entered types and then a user
@@ -57,9 +57,10 @@ def supabase_auth(
             email=supabase_auth_email,
             password=supabase_auth_password
         )
-    except ValidationError as e:
-        logger.error(f"Invalid credentials: {e}")
-        raise
+    except ValidationError:
+        # Validation errors can contain the supplied password; never log them.
+        logger.warning("Invalid login form")
+        return None
 
     try:
         # Authentication response
@@ -74,7 +75,7 @@ def supabase_auth(
         return response
     except AuthApiError:
         logger.warning(f"Authentication failed for {credentials.email}")
-        raise
+        return None
     except Exception:
         logger.error(f"An unexpected error occurred for {credentials.email}")
         raise
